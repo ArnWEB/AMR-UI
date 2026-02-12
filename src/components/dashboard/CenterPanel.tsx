@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { CenterMap } from './CenterMap';
 import { LiveFeed } from './LiveFeed';
-import { Map, Video } from 'lucide-react';
+import { MonitoringDashboard } from './MonitoringDashboard';
+import { Map, Video, BarChart2 } from 'lucide-react';
 
 export const CenterPanel: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'map' | 'video'>('map');
+    const [activeTab, setActiveTab] = useState<'map' | 'video' | 'monitoring'>('map');
 
     return (
         <div className="flex flex-col h-full w-full bg-background relative overflow-hidden">
@@ -20,6 +21,16 @@ export const CenterPanel: React.FC = () => {
                     >
                         <Map size={14} />
                         <span>Map View</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('monitoring')}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${activeTab === 'monitoring'
+                                ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
+                    >
+                        <BarChart2 size={14} />
+                        <span>Monitoring</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('video')}
@@ -42,6 +53,9 @@ export const CenterPanel: React.FC = () => {
             <div className="flex-1 relative overflow-hidden">
                 <div className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${activeTab === 'map' ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
                     <CenterMap />
+                </div>
+                <div className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${activeTab === 'monitoring' ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+                    <MonitoringDashboard />
                 </div>
                 <div className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${activeTab === 'video' ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
                     <LiveFeed />
