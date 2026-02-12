@@ -10,11 +10,11 @@ import {
 
 // Mock data for AMR working hours
 const amrWorkingHoursData = [
-    { name: 'AMR-1', hours: 8.5, tasks: 24, efficiency: 92 },
-    { name: 'AMR-2', hours: 7.2, tasks: 18, efficiency: 88 },
-    { name: 'AMR-3', hours: 6.8, tasks: 15, efficiency: 85 },
-    { name: 'AMR-4', hours: 9.1, tasks: 28, efficiency: 94 },
-    { name: 'AMR-5', hours: 5.5, tasks: 12, efficiency: 82 },
+    { name: 'AMR-1', hours: 8.5, tasks: 24, efficiency: 92, battery: 85 },
+    { name: 'AMR-2', hours: 7.2, tasks: 18, efficiency: 88, battery: 72 },
+    { name: 'AMR-3', hours: 6.8, tasks: 15, efficiency: 85, battery: 68 },
+    { name: 'AMR-4', hours: 9.1, tasks: 28, efficiency: 94, battery: 91 },
+    { name: 'AMR-5', hours: 5.5, tasks: 12, efficiency: 82, battery: 55 },
 ];
 
 // Previous day hourly throughput
@@ -435,11 +435,11 @@ export const MonitoringDashboard: React.FC = () => {
                                             <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
                                                 <div 
                                                     className="h-full bg-green-500 rounded-full"
-                                                    style={{ width: `${Math.random() * 40 + 60}%` }}
+                                                    style={{ width: `${amr.battery}%` }}
                                                 />
                                             </div>
                                             <span className="text-xs text-slate-500">
-                                                {Math.floor(Math.random() * 40 + 60)}%
+                                                {amr.battery}%
                                             </span>
                                         </div>
                                     </td>

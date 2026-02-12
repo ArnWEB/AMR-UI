@@ -28,11 +28,13 @@ export const LiveFeed: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationFrameRef = useRef<number>(0);
     const timeRef = useRef<number>(0);
+    const initializedAmrsRef = useRef<Set<string>>(new Set());
 
     // Initialize camera states for all AMRs
     useEffect(() => {
         amrs.forEach(amr => {
-            if (!cameraStates[amr.id]) {
+            if (!initializedAmrsRef.current.has(amr.id)) {
+                initializedAmrsRef.current.add(amr.id);
                 setCameraStates(prev => ({
                     ...prev,
                     [amr.id]: {
