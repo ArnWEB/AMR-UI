@@ -1,13 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CenterMap } from './CenterMap';
 import { LiveFeed } from './LiveFeed';
 import { MonitoringDashboard } from './MonitoringDashboard';
 import Warehouse3D from '../warehouse/Warehouse3D';
+import { useSimulationStore } from '@/store/useSimulationStore';
 import { Map, Video, BarChart2, Box } from 'lucide-react';
 
 export const CenterPanel: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'map' | 'video' | 'monitoring'>('map');
     const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
+    
+    // Global simulation loop - runs regardless of which view is active
+    const isRunning = useSimulationStore((state) => state.isRunning);
+    const speed = useSimulationStore((state) => state.speed);
+    const updateAMRPosition = useSimulationStore((state) => state.updateAMRPosition);
+    
+    useEffect(() => {
+        if (!isRunning) return;
+
+        const interval = setInterval(() => {
+            const store = useSimulationStore.getState();
+            const currentAmrs = store.amrs;
+
+            currentAmrs.forEach(amr => {
+                if (amr.status === 'error') return;
+                if (!amr.path || amr.path.length === 0) return;
+
+                const target = amr.path[0];
+                const dx = target.x - amr.position.x;
+                const dy = target.y - amr.position.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                const stepSize = 2 * speed;
+
+                if (distance < stepSize) {
+                    updateAMRPosition(amr.id, target);
+                    store.shiftWaypoint(amr.id);
+                } else {
+                    const vx = (dx / distance) * stepSize;
+                    const vy = (dy / distance) * stepSize;
+
+                    const newPosition = {
+                        x: amr.position.x + vx,
+                        y: amr.position.y + vy
+                    };
+
+                    // Phase 2: Check for collision
+                    if (store.collisionAvoidanceEnabled && store.checkCollision?.(amr.id, newPosition)) {
+                        return;
+                    }
+
+                    updateAMRPosition(amr.id, newPosition);
+                }
+            });
+        }, 30);
+
+        return () => clearInterval(interval);
+    }, [isRunning, speed, updateAMRPosition]);
 
     return (
         <div className="flex flex-col h-full w-full bg-background relative overflow-hidden">

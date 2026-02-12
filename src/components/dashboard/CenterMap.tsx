@@ -58,7 +58,7 @@ const ChargingStation: React.FC<{ x: number; y: number }> = ({ x, y }) => (
 );
 
 export const CenterMap: React.FC = () => {
-    const { amrs, updateAMRPosition, isRunning, speed, selectAMR, selectedAmrId, showHeatmap } = useSimulationStore();
+    const { amrs, isRunning, selectAMR, selectedAmrId, showHeatmap } = useSimulationStore();
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
@@ -77,50 +77,7 @@ export const CenterMap: React.FC = () => {
         return () => window.removeEventListener('resize', updateSize);
     }, []);
 
-    // Simulation Loop
-    useEffect(() => {
-        if (!isRunning) return;
 
-        const interval = setInterval(() => {
-            const store = useSimulationStore.getState();
-            const currentAmrs = store.amrs;
-
-            currentAmrs.forEach(amr => {
-                if (amr.status === 'error') return;
-                if (!amr.path || amr.path.length === 0) return;
-
-                const target = amr.path[0];
-                const dx = target.x - amr.position.x;
-                const dy = target.y - amr.position.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                const stepSize = 2 * speed;
-
-                if (distance < stepSize) {
-                    updateAMRPosition(amr.id, target);
-                    store.shiftWaypoint(amr.id);
-                } else {
-                    const vx = (dx / distance) * stepSize;
-                    const vy = (dy / distance) * stepSize;
-
-                    const newPosition = {
-                        x: amr.position.x + vx,
-                        y: amr.position.y + vy
-                    };
-
-                    // Phase 2: Check for collision
-                    if (store.collisionAvoidanceEnabled && store.checkCollision(amr.id, newPosition)) {
-                        // Slow down or wait if collision detected
-                        return; // Skip movement this frame
-                    }
-
-                    updateAMRPosition(amr.id, newPosition);
-                }
-            });
-        }, 30);
-
-        return () => clearInterval(interval);
-    }, [isRunning, speed, updateAMRPosition]);
 
     const w = dimensions.width;
     const h = dimensions.height;

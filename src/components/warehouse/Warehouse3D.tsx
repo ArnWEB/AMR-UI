@@ -1,9 +1,17 @@
 import React, { useRef, useMemo, useEffect, useState } from 'react';
-import { Canvas, useThree, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSimulationStore } from '@/store/useSimulationStore';
 import { WAREHOUSE_GRAPH } from '@/utils/pathfinding';
+
+// Types
+interface AMRData {
+  id: string;
+  status: string;
+  position: { x: number; y: number };
+  path?: { x: number; y: number }[];
+}
 
 // Static scene elements that never change
 const StaticEnvironment: React.FC = () => {
@@ -137,108 +145,94 @@ const WaypointMarker: React.FC<{ position: [number, number, number]; isStart: bo
   );
 };
 
-// AMR that reads from store directly in useFrame
-const AMR: React.FC<{ amrId: string }> = ({ amrId }) => {
+// Simple visible AMR component
+const AMR: React.FC<{ amr: AMRData }> = ({ amr }) => {
   const meshRef = useRef<THREE.Group>(null);
-  const currentPos = useRef(new THREE.Vector3());
-  const currentRot = useRef(0);
+  const posRef = useRef({ x: amr.position.x, y: amr.position.y });
+  const rotRef = useRef(0);
+  
+  // Initialize position
+  useEffect(() => {
+    if (meshRef.current) {
+      posRef.current = { x: amr.position.x, y: amr.position.y };
+      meshRef.current.position.set(amr.position.x, 8, amr.position.y);
+    }
+  }, [amr.position.x, amr.position.y]);
   
   useFrame((_, delta) => {
     if (!meshRef.current) return;
     
-    // Get fresh state from store
-    const store = useSimulationStore.getState();
-    const amr = store.amrs.find(a => a.id === amrId);
-    if (!amr) return;
-    
+    // Smoothly interpolate toward target position
     const targetX = amr.position.x;
-    const targetZ = amr.position.y;
+    const targetY = amr.position.y;
     
-    // Smooth movement
-    const dx = targetX - currentPos.current.x;
-    const dz = targetZ - currentPos.current.z;
-    const distance = Math.sqrt(dx * dx + dz * dz);
+    const dx = targetX - posRef.current.x;
+    const dy = targetY - posRef.current.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
     
-    const speed = 150 * delta;
-    if (distance < speed) {
-      currentPos.current.x = targetX;
-      currentPos.current.z = targetZ;
-    } else {
-      currentPos.current.x += (dx / distance) * speed;
-      currentPos.current.z += (dz / distance) * speed;
-    }
-    
-    // Rotation
-    if (amr.path && amr.path.length > 0) {
-      const next = amr.path[0];
-      const targetRot = Math.atan2(next.x - amr.position.x, next.y - amr.position.y);
-      let diff = targetRot - currentRot.current;
+    const speed = 180 * delta;
+    if (distance > 0.1) {
+      if (distance < speed) {
+        posRef.current.x = targetX;
+        posRef.current.y = targetY;
+      } else {
+        posRef.current.x += (dx / distance) * speed;
+        posRef.current.y += (dy / distance) * speed;
+      }
+      
+      // Face movement direction
+      const targetRot = Math.atan2(dx, dy);
+      let diff = targetRot - rotRef.current;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      currentRot.current += diff * Math.min(delta * 5, 1);
+      rotRef.current += diff * Math.min(delta * 10, 1);
     }
     
-    meshRef.current.position.set(currentPos.current.x, 8, currentPos.current.z);
-    meshRef.current.rotation.y = currentRot.current;
+    meshRef.current.position.set(posRef.current.x, 8, posRef.current.y);
+    meshRef.current.rotation.y = rotRef.current;
   });
   
-  // Get initial position
-  useEffect(() => {
-    const store = useSimulationStore.getState();
-    const amr = store.amrs.find(a => a.id === amrId);
-    if (amr && meshRef.current) {
-      currentPos.current.set(amr.position.x, 8, amr.position.y);
-      meshRef.current.position.copy(currentPos.current);
+  const statusColor = useMemo(() => {
+    switch (amr.status) {
+      case 'error': return '#ef4444';
+      case 'loading': return '#f59e0b';
+      case 'unloading': return '#8b5cf6';
+      case 'moving': return '#3b82f6';
+      default: return '#22c55e';
     }
-  }, [amrId]);
+  }, [amr.status]);
   
   return (
-    <group ref={meshRef}>
-      {/* Body */}
-      <mesh castShadow position={[0, 0, 0]}>
-        <boxGeometry args={[20, 6, 30]} />
+    <group ref={meshRef} position={[amr.position.x, 8, amr.position.y]}>
+      {/* Main body - dark grey */}
+      <mesh castShadow>
+        <boxGeometry args={[20, 8, 30]} />
         <meshStandardMaterial color="#374151" />
       </mesh>
       
-      {/* Upper body */}
-      <mesh castShadow position={[0, 9, 0]}>
-        <boxGeometry args={[18, 6, 24]} />
-        <meshStandardMaterial color="#4b5563" />
+      {/* Status light on top */}
+      <mesh castShadow position={[0, 6, 0]}>
+        <boxGeometry args={[16, 4, 26]} />
+        <meshStandardMaterial color={statusColor} emissive={statusColor} emissiveIntensity={0.3} />
       </mesh>
       
-      {/* Status light bar */}
-      <mesh castShadow position={[0, 14, 0]}>
-        <boxGeometry args={[12, 4, 20]} />
-        <meshStandardMaterial color="#22c55e" />
+      {/* Direction arrow */}
+      <mesh castShadow position={[0, 6, 16]} rotation={[0, 0, 0]}>
+        <coneGeometry args={[5, 10, 4]} />
+        <meshStandardMaterial color={statusColor} />
       </mesh>
       
-      {/* Direction indicator */}
-      <mesh castShadow position={[0, 14, 14]}>
-        <coneGeometry args={[4, 6, 4]} />
-        <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.5} />
-      </mesh>
+      {/* 4 wheels */}
+      {[[-8, -10], [8, -10], [-8, 10], [8, 10]].map(([x, z], i) => (
+        <mesh key={i} castShadow position={[x, -2, z]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[3, 3, 3, 16]} />
+          <meshStandardMaterial color="#1f2937" />
+        </mesh>
+      ))}
       
-      {/* Wheels */}
-      <mesh castShadow position={[-10, 2, -12]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[3, 3, 2, 16]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-      <mesh castShadow position={[10, 2, -12]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[3, 3, 2, 16]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-      <mesh castShadow position={[-10, 2, 12]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[3, 3, 2, 16]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-      <mesh castShadow position={[10, 2, 12]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[3, 3, 2, 16]} />
-        <meshStandardMaterial color="#1f2937" />
-      </mesh>
-      
-      {/* Label */}
-      <Text position={[0, 22, 0]} fontSize={4} color="#ffffff" anchorX="center">
-        {amrId}
+      {/* ID label floating above */}
+      <Text position={[0, 14, 0]} fontSize={5} color="#ffffff" anchorX="center">
+        {amr.id}
       </Text>
     </group>
   );
@@ -246,43 +240,35 @@ const AMR: React.FC<{ amrId: string }> = ({ amrId }) => {
 
 // Main scene component
 const Scene: React.FC = () => {
-  const [amrIds, setAmrIds] = useState<string[]>(() => {
-    // Initialize from store
-    const store = useSimulationStore.getState();
-    return store.amrs.map(a => a.id);
-  });
+  const amrs = useSimulationStore((state) => state.amrs);
   
-  useEffect(() => {
-    // Subscribe to changes only
-    const unsubscribe = useSimulationStore.subscribe((state) => {
-      const currentIds = state.amrs.map(a => a.id);
-      setAmrIds(prev => {
-        if (JSON.stringify(prev) !== JSON.stringify(currentIds)) {
-          return currentIds;
-        }
-        return prev;
-      });
-    });
-    
-    return unsubscribe;
-  }, []);
+  const amrData: AMRData[] = useMemo(() => {
+    return amrs.map(amr => ({
+      id: amr.id,
+      status: amr.status,
+      position: amr.position,
+      path: amr.path
+    }));
+  }, [amrs]);
   
   return (
     <>
-      <ambientLight intensity={0.5} />
+      <ambientLight intensity={0.6} />
       <directionalLight 
-        position={[400, 500, 300]} 
-        intensity={0.8}
+        position={[400, 600, 400]} 
+        intensity={1}
         castShadow
         shadow-mapSize={[1024, 1024]}
+        shadow-camera-near={0.5}
+        shadow-camera-far={2000}
       />
-      <directionalLight position={[-200, 300, 200]} intensity={0.3} />
+      <directionalLight position={[-200, 300, 200]} intensity={0.4} />
       
       <StaticEnvironment />
       <WaypointsStatic />
       
-      {amrIds.map(id => (
-        <AMR key={id} amrId={id} />
+      {amrData.map((amr) => (
+        <AMR key={amr.id} amr={amr} />
       ))}
       
       <OrbitControls
@@ -296,18 +282,6 @@ const Scene: React.FC = () => {
       />
     </>
   );
-};
-
-// Wrapper to handle camera
-const CameraSetup: React.FC = () => {
-  const { camera } = useThree();
-  
-  useEffect(() => {
-    camera.position.set(600, 500, 600);
-    camera.lookAt(400, 0, 300);
-  }, [camera]);
-  
-  return null;
 };
 
 const Warehouse3D: React.FC = () => {
@@ -326,7 +300,6 @@ const Warehouse3D: React.FC = () => {
           gl.setClearColor('#f1f5f9');
         }}
       >
-        <CameraSetup />
         <Scene />
       </Canvas>
     </div>
