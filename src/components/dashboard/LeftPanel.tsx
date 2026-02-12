@@ -111,6 +111,17 @@ export const LeftPanel: React.FC = () => {
                         />
                         <label htmlFor="autoAssign" className="text-sm cursor-pointer select-none">Auto-assign Tasks</label>
                     </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="collisionAvoidance"
+                            checked={store.collisionAvoidanceEnabled}
+                            onChange={store.toggleCollisionAvoidance}
+                            className="rounded border-input text-primary focus:ring-ring"
+                        />
+                        <label htmlFor="collisionAvoidance" className="text-sm cursor-pointer select-none">Collision Avoidance</label>
+                    </div>
                 </div>
             </div>
 
@@ -186,6 +197,67 @@ export const LeftPanel: React.FC = () => {
                 {!store.selectedAmrId && (
                     <p className="text-[10px] text-muted-foreground italic">Select a robot to enable overrides</p>
                 )}
+            </div>
+
+            {/* Phase 3: Demo Scenarios */}
+            <div className="space-y-3 border rounded-lg p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                <h3 className="text-sm font-medium uppercase tracking-wider text-blue-700 flex items-center gap-2">
+                    Demo Scenarios
+                </h3>
+                
+                <div className="space-y-2">
+                    {store.demoScenarios.map((scenario) => (
+                        <button
+                            key={scenario.id}
+                            onClick={() => store.loadDemoScenario(scenario.id)}
+                            disabled={store.isRunning}
+                            className={`w-full p-2 text-left text-xs border rounded transition-all ${
+                                store.activeDemoScenario === scenario.id
+                                    ? 'bg-blue-100 border-blue-300 text-blue-800'
+                                    : 'bg-white border-slate-200 hover:bg-blue-50'
+                            } disabled:opacity-50`}
+                        >
+                            <div className="font-semibold">{scenario.name}</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">{scenario.description}</div>
+                            <div className="flex gap-2 mt-1 text-[9px] text-slate-400">
+                                <span>{scenario.amrCount} AMRs</span>
+                                <span>•</span>
+                                <span>{scenario.speed}x speed</span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Phase 3: Export & Tools */}
+            <div className="space-y-3 border rounded-lg p-4 bg-secondary/20">
+                <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Tools</h3>
+                
+                <button
+                    onClick={() => {
+                        const report = store.exportReport();
+                        const blob = new Blob([report], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `warehouse-report-${new Date().toISOString().slice(0, 10)}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }}
+                    className="w-full px-3 py-2 text-xs border rounded hover:bg-accent text-left flex items-center gap-2"
+                >
+                    <span>Export Report</span>
+                </button>
+                
+                <button
+                    onClick={() => store.clearAllTasks()}
+                    disabled={store.isRunning}
+                    className="w-full px-3 py-2 text-xs border rounded hover:bg-red-50 text-red-600 border-red-200 text-left disabled:opacity-50"
+                >
+                    Clear All Tasks
+                </button>
             </div>
 
         </div>

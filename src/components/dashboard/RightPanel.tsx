@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSimulationStore } from '@/store/useSimulationStore';
-import { Battery, Activity, AlertCircle, Clock, X, Package } from 'lucide-react';
+import { Battery, Activity, AlertCircle, Clock, X, Package, TrendingUp, Shield } from 'lucide-react';
 
 export const RightPanel: React.FC = () => {
     const { 
@@ -11,8 +11,19 @@ export const RightPanel: React.FC = () => {
         selectAMR, 
         toggleAMRHealth,
         getAMRCurrentTask,
-        cargos 
+        cargos,
+        metrics,
+        updateMetrics,
+        collisionAvoidanceEnabled
     } = useSimulationStore();
+
+    // Update metrics periodically
+    useEffect(() => {
+        const interval = setInterval(() => {
+            updateMetrics();
+        }, 5000); // Update every 5 seconds
+        return () => clearInterval(interval);
+    }, [updateMetrics]);
 
     // Calculate workflow stats
     const loadingCount = amrs.filter(a => a.status === 'loading').length;
@@ -161,6 +172,32 @@ export const RightPanel: React.FC = () => {
                             <div className="text-xs text-purple-600 font-medium uppercase mb-1">Operations</div>
                             <div className="text-2xl font-bold text-purple-700">{loadingCount + unloadingCount}</div>
                             <div className="text-[10px] text-purple-500">{loadingCount} loading, {unloadingCount} unloading</div>
+                        </div>
+                    </div>
+
+                    {/* Phase 2: Performance Metrics */}
+                    <div className="space-y-2 border rounded-lg p-3 bg-slate-50">
+                        <h3 className="text-xs font-medium uppercase tracking-wider text-slate-600 flex items-center gap-2">
+                            <TrendingUp size={12} /> Performance Metrics
+                        </h3>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span className="text-slate-500">System Efficiency:</span>
+                                <span className="font-bold ml-1">{metrics.systemEfficiency.toFixed(1)}%</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-500">Throughput:</span>
+                                <span className="font-bold ml-1">{metrics.throughputPerHour.toFixed(1)}/hr</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-500">Avg Task Time:</span>
+                                <span className="font-bold ml-1">{(metrics.averageTaskCompletionTime / 1000).toFixed(0)}s</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Shield size={10} className={collisionAvoidanceEnabled ? 'text-green-500' : 'text-slate-400'} />
+                                <span className="text-slate-500">Collision Avoid:</span>
+                                <span className="font-bold ml-1">{collisionAvoidanceEnabled ? 'ON' : 'OFF'}</span>
+                            </div>
                         </div>
                     </div>
 

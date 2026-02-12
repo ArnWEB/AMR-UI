@@ -23,6 +23,19 @@ export interface WorkflowTask {
     createdAt: string;
     startedAt?: string;
     completedAt?: string;
+    // Phase 3: Loading progress
+    currentStepProgress?: number; // 0-100 percentage for loading/unloading
+}
+
+// Phase 3: Demo scenarios
+export interface DemoScenario {
+    id: string;
+    name: string;
+    description: string;
+    amrCount: number;
+    taskPattern: 'sequential' | 'parallel' | 'burst';
+    speed: number;
+    duration: number; // seconds
 }
 
 export interface Cargo {
@@ -31,6 +44,10 @@ export interface Cargo {
     weight: number; // kg
     status: 'waiting' | 'loading' | 'in_transit' | 'stored' | 'unloading';
     location: string; // nodeId or AMR ID
+    assignedAMR?: string;
+    pickupTime?: string;
+    deliveryTime?: string;
+    totalTransitTime?: number; // milliseconds
 }
 
 export interface Zone {
@@ -42,4 +59,16 @@ export interface Zone {
     capacity: number;
     currentLoad: number;
     color: string; // for visualization
+    occupiedBy?: string[]; // AMR IDs currently in zone
+}
+
+export interface PerformanceMetrics {
+    totalTasksCompleted: number;
+    totalCargoMoved: number;
+    averageTaskCompletionTime: number; // milliseconds
+    amrUtilization: Record<string, number>; // AMR ID -> percentage
+    zoneUtilization: Record<string, number>; // Zone ID -> percentage
+    throughputPerHour: number;
+    systemEfficiency: number; // percentage
+    startTime: string;
 }

@@ -82,7 +82,8 @@ export const CenterMap: React.FC = () => {
         if (!isRunning) return;
 
         const interval = setInterval(() => {
-            const currentAmrs = useSimulationStore.getState().amrs;
+            const store = useSimulationStore.getState();
+            const currentAmrs = store.amrs;
 
             currentAmrs.forEach(amr => {
                 if (amr.status === 'error') return;
@@ -97,15 +98,23 @@ export const CenterMap: React.FC = () => {
 
                 if (distance < stepSize) {
                     updateAMRPosition(amr.id, target);
-                    useSimulationStore.getState().shiftWaypoint(amr.id);
+                    store.shiftWaypoint(amr.id);
                 } else {
                     const vx = (dx / distance) * stepSize;
                     const vy = (dy / distance) * stepSize;
 
-                    updateAMRPosition(amr.id, {
+                    const newPosition = {
                         x: amr.position.x + vx,
                         y: amr.position.y + vy
-                    });
+                    };
+
+                    // Phase 2: Check for collision
+                    if (store.collisionAvoidanceEnabled && store.checkCollision(amr.id, newPosition)) {
+                        // Slow down or wait if collision detected
+                        return; // Skip movement this frame
+                    }
+
+                    updateAMRPosition(amr.id, newPosition);
                 }
             });
         }, 30);

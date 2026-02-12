@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AMR, LogEntry, Position } from '@/types';
-import { WorkflowTask, TaskStep, Cargo } from '@/types/tasks';
+import { WorkflowTask, TaskStep, Cargo, PerformanceMetrics, DemoScenario } from '@/types/tasks';
 import { WAREHOUSE_GRAPH, findPath, findNearestNode } from '@/utils/pathfinding';
 import { ZONES, getFirstAvailableNode, findBestProcessingNode, findBestStorageNode } from '@/data/zones';
 
@@ -16,6 +16,17 @@ interface SimulationState {
     workflowTasks: WorkflowTask[];
     cargos: Cargo[];
     autoAssignTasks: boolean;
+    
+    // Phase 2: Performance metrics
+    metrics: PerformanceMetrics;
+    
+    // Phase 2: Collision avoidance
+    collisionAvoidanceEnabled: boolean;
+    
+    // Phase 3: Demo mode
+    demoScenarios: DemoScenario[];
+    activeDemoScenario: string | null;
+    demoMode: boolean;
     
     // Actions
     toggleSimulation: () => void;
@@ -41,6 +52,21 @@ interface SimulationState {
     sendAMRToDock: (id: string) => void;
     sendAMRToCharging: (id: string) => void;
     getAMRCurrentTask: (amrId: string) => WorkflowTask | undefined;
+    
+    // Phase 2: Performance actions
+    updateMetrics: () => void;
+    getMetrics: () => PerformanceMetrics;
+    
+    // Phase 2: Collision avoidance
+    checkCollision: (amrId: string, newPosition: Position) => boolean;
+    toggleCollisionAvoidance: () => void;
+    
+    // Phase 3: Demo scenarios
+    loadDemoScenario: (scenarioId: string) => void;
+    startDemoMode: () => void;
+    stopDemoMode: () => void;
+    exportReport: () => string;
+    clearAllTasks: () => void;
 }
 
 const INITIAL_POSITIONS = [
@@ -119,6 +145,54 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     workflowTasks: [],
     cargos: [],
     autoAssignTasks: true,
+    
+    // Phase 2: Performance metrics
+    metrics: {
+        totalTasksCompleted: 0,
+        totalCargoMoved: 0,
+        averageTaskCompletionTime: 0,
+        amrUtilization: {},
+        zoneUtilization: {},
+        throughputPerHour: 0,
+        systemEfficiency: 0,
+        startTime: new Date().toISOString()
+    },
+    
+    // Phase 2: Collision avoidance
+    collisionAvoidanceEnabled: true,
+    
+    // Phase 3: Demo scenarios
+    demoScenarios: [
+        {
+            id: 'demo-1',
+            name: 'Standard Workflow',
+            description: '3 AMRs working in parallel with optimal paths',
+            amrCount: 3,
+            taskPattern: 'parallel',
+            speed: 1,
+            duration: 120
+        },
+        {
+            id: 'demo-2',
+            name: 'High Throughput',
+            description: '5 AMRs at 2x speed demonstrating peak capacity',
+            amrCount: 5,
+            taskPattern: 'burst',
+            speed: 2,
+            duration: 60
+        },
+        {
+            id: 'demo-3',
+            name: 'Collision Avoidance',
+            description: '3 AMRs converging on same zone with avoidance enabled',
+            amrCount: 3,
+            taskPattern: 'sequential',
+            speed: 1,
+            duration: 90
+        }
+    ],
+    activeDemoScenario: null,
+    demoMode: false,
 
     toggleSimulation: () => set((state) => {
         const newIsRunning = !state.isRunning;
@@ -485,5 +559,165 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         const amr = state.amrs.find(a => a.id === amrId);
         if (!amr || !amr.currentTask) return undefined;
         return state.workflowTasks.find(t => t.id === amr.currentTask);
+    },
+
+    // Phase 2: Update performance metrics
+    updateMetrics: () => {
+        const state = get();
+        const completedTasks = state.workflowTasks.filter(t => t.status === 'completed');
+        
+        // Calculate average task completion time
+        const completionTimes = completedTasks
+            .filter(t => t.startedAt && t.completedAt)
+            .map(t => new Date(t.completedAt!).getTime() - new Date(t.startedAt!).getTime());
+        
+        const avgTime = completionTimes.length > 0 
+            ? completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length 
+            : 0;
+        
+        // Calculate AMR utilization
+        const amrUtilization: Record<string, number> = {};
+        state.amrs.forEach(amr => {
+            const tasksForAmr = state.workflowTasks.filter(t => t.assignedTo === amr.id && t.status === 'completed');
+            amrUtilization[amr.id] = tasksForAmr.length;
+        });
+        
+        // Calculate throughput (tasks per hour)
+        const startTime = new Date(state.metrics.startTime).getTime();
+        const currentTime = new Date().getTime();
+        const hoursElapsed = (currentTime - startTime) / (1000 * 60 * 60);
+        const throughput = hoursElapsed > 0 ? completedTasks.length / hoursElapsed : 0;
+        
+        // Calculate system efficiency
+        const totalTasks = state.workflowTasks.length;
+        const efficiency = totalTasks > 0 ? (completedTasks.length / totalTasks) * 100 : 0;
+        
+        set((s) => ({
+            metrics: {
+                ...s.metrics,
+                totalTasksCompleted: completedTasks.length,
+                totalCargoMoved: state.cargos.filter(c => c.status === 'stored').length,
+                averageTaskCompletionTime: avgTime,
+                amrUtilization,
+                throughputPerHour: throughput,
+                systemEfficiency: efficiency
+            }
+        }));
+    },
+
+    getMetrics: () => {
+        get().updateMetrics();
+        return get().metrics;
+    },
+
+    // Phase 2: Collision detection
+    checkCollision: (amrId: string, newPosition: Position) => {
+        const state = get();
+        if (!state.collisionAvoidanceEnabled) return false;
+        
+        const currentAmr = state.amrs.find(a => a.id === amrId);
+        if (!currentAmr) return false;
+        
+        const SAFETY_DISTANCE = 30; // pixels
+        
+        // Check distance to all other AMRs
+        for (const otherAmr of state.amrs) {
+            if (otherAmr.id === amrId) continue;
+            if (otherAmr.status === 'error') continue;
+            
+            const dx = newPosition.x - otherAmr.position.x;
+            const dy = newPosition.y - otherAmr.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < SAFETY_DISTANCE) {
+                return true; // Collision detected
+            }
+        }
+        
+        return false; // No collision
+    },
+
+    toggleCollisionAvoidance: () => set((state) => ({ 
+        collisionAvoidanceEnabled: !state.collisionAvoidanceEnabled 
+    })),
+
+    // Phase 3: Demo scenarios
+    loadDemoScenario: (scenarioId: string) => {
+        const scenario = get().demoScenarios.find(s => s.id === scenarioId);
+        if (!scenario) return;
+
+        // Stop current simulation
+        set({ isRunning: false });
+        
+        // Clear existing tasks
+        get().clearAllTasks();
+        
+        // Initialize AMRs for scenario
+        get().initializeAMRs(scenario.amrCount);
+        
+        // Set speed
+        set({ speed: scenario.speed });
+        
+        // Set active scenario
+        set({ 
+            activeDemoScenario: scenarioId,
+            demoMode: true 
+        });
+        
+        get().addLog(`Demo scenario loaded: ${scenario.name}`, 'info');
+    },
+
+    startDemoMode: () => {
+        set({ demoMode: true });
+        get().addLog('Demo mode started', 'info');
+    },
+
+    stopDemoMode: () => {
+        set({ 
+            demoMode: false,
+            activeDemoScenario: null 
+        });
+        get().addLog('Demo mode stopped', 'info');
+    },
+
+    exportReport: () => {
+        const state = get();
+        const metrics = state.metrics;
+        
+        const report = {
+            timestamp: new Date().toISOString(),
+            summary: {
+                totalTasks: state.workflowTasks.length,
+                completedTasks: metrics.totalTasksCompleted,
+                totalCargo: state.cargos.length,
+                storedCargo: metrics.totalCargoMoved,
+                systemEfficiency: metrics.systemEfficiency.toFixed(2) + '%',
+                throughput: metrics.throughputPerHour.toFixed(2) + ' tasks/hour',
+                avgTaskTime: (metrics.averageTaskCompletionTime / 1000).toFixed(2) + ' seconds'
+            },
+            amrPerformance: state.amrs.map(amr => ({
+                id: amr.id,
+                tasksCompleted: state.workflowTasks.filter(t => t.assignedTo === amr.id && t.status === 'completed').length,
+                status: amr.status,
+                battery: amr.battery + '%'
+            })),
+            logs: state.logs.slice(0, 50) // Last 50 logs
+        };
+        
+        return JSON.stringify(report, null, 2);
+    },
+
+    clearAllTasks: () => {
+        set({
+            workflowTasks: [],
+            cargos: [],
+            amrs: get().amrs.map(amr => ({
+                ...amr,
+                currentTask: undefined,
+                path: [],
+                status: 'idle'
+            }))
+        });
+        get().addLog('All tasks cleared', 'info');
     }
 }));
