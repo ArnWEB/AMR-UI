@@ -7,6 +7,7 @@ import {
     Activity, Clock, Package, Zap, TrendingUp, 
     BarChart3, PieChart as PieIcon, AlertTriangle 
 } from 'lucide-react';
+import { AMRUtilization } from './AMRUtilization';
 
 // Mock data for AMR working hours
 const amrWorkingHoursData = [
@@ -389,6 +390,11 @@ export const MonitoringDashboard: React.FC = () => {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            {/* AMR Utilization Timeline */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                <AMRUtilization />
             </div>
 
             {/* AMR Performance Table */}
