@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { CenterMap } from './CenterMap';
 import { LiveFeed } from './LiveFeed';
 import { MonitoringDashboard } from './MonitoringDashboard';
+import { ScheduleViewer } from './ScheduleViewer';
 import Warehouse3D from '../warehouse/Warehouse3D';
 import { useSimulationStore } from '@/store/useSimulationStore';
-import { Map, Video, BarChart2, Box } from 'lucide-react';
+import { Map, Video, BarChart2, Box, Calendar } from 'lucide-react';
 
 export const CenterPanel: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'map' | 'video' | 'monitoring'>('map');
+    const [activeTab, setActiveTab] = useState<'map' | 'video' | 'monitoring' | 'schedule'>('map');
     const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
     
     // Global simulation loop - runs regardless of which view is active
@@ -119,6 +120,17 @@ export const CenterPanel: React.FC = () => {
                         <span>Monitoring</span>
                     </button>
                     <button
+                        onClick={() => setActiveTab('schedule')}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                            activeTab === 'schedule'
+                                ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
+                    >
+                        <Calendar size={14} />
+                        <span>Schedule</span>
+                    </button>
+                    <button
                         onClick={() => setActiveTab('video')}
                         className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                             activeTab === 'video'
@@ -150,6 +162,13 @@ export const CenterPanel: React.FC = () => {
                     activeTab === 'monitoring' ? 'opacity-100 z-10' : 'opacity-0 z-0'
                 }`}>
                     <MonitoringDashboard />
+                </div>
+                
+                {/* Schedule Viewer */}
+                <div className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${
+                    activeTab === 'schedule' ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                }`}>
+                    <ScheduleViewer />
                 </div>
                 
                 {/* Live Feed */}
