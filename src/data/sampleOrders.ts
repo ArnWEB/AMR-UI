@@ -1,0 +1,208 @@
+import { TransportOrder, SampleScenario } from '@/types/cuopt';
+
+export const SAMPLE_SCENARIOS: SampleScenario[] = [
+  {
+    id: 'cuopt-documentation',
+    name: 'CuOpt Documentation',
+    description: 'Standard 6-order example from CuOpt docs',
+    orders: [
+      { pickup_location: 4, delivery_location: 5, order_demand: 1, earliest_pickup: 0, latest_pickup: 10, pickup_service_time: 2, earliest_delivery: 0, latest_delivery: 45, delivery_service_time: 2 },
+      { pickup_location: 5, delivery_location: 6, order_demand: 1, earliest_pickup: 0, latest_pickup: 20, pickup_service_time: 2, earliest_delivery: 0, latest_delivery: 45, delivery_service_time: 2 },
+      { pickup_location: 6, delivery_location: 0, order_demand: 1, earliest_pickup: 0, latest_pickup: 30, pickup_service_time: 2, earliest_delivery: 0, latest_delivery: 45, delivery_service_time: 2 },
+      { pickup_location: 6, delivery_location: 5, order_demand: 1, earliest_pickup: 0, latest_pickup: 10, pickup_service_time: 2, earliest_delivery: 0, latest_delivery: 45, delivery_service_time: 2 },
+      { pickup_location: 5, delivery_location: 4, order_demand: 1, earliest_pickup: 0, latest_pickup: 20, pickup_service_time: 2, earliest_delivery: 0, latest_delivery: 45, delivery_service_time: 2 },
+      { pickup_location: 4, delivery_location: 0, order_demand: 1, earliest_pickup: 0, latest_pickup: 30, pickup_service_time: 2, earliest_delivery: 0, latest_delivery: 45, delivery_service_time: 2 },
+    ],
+  },
+  {
+    id: 'single-transfer',
+    name: 'Single Transfer',
+    description: 'Move from incoming station to processing',
+    orders: [
+      {
+        pickup_location: 2,
+        delivery_location: 4,
+        order_demand: 1,
+        earliest_pickup: 0,
+        latest_pickup: 10,
+        pickup_service_time: 2,
+        earliest_delivery: 0,
+        latest_delivery: 45,
+        delivery_service_time: 2,
+      },
+    ],
+  },
+  {
+    id: 'pickup-process-depot',
+    name: 'Pickup → Process → Depot',
+    description: 'Full workflow: station → processing → depot',
+    orders: [
+      {
+        pickup_location: 2,
+        delivery_location: 5,
+        order_demand: 1,
+        earliest_pickup: 0,
+        latest_pickup: 10,
+        pickup_service_time: 2,
+        earliest_delivery: 5,
+        latest_delivery: 30,
+        delivery_service_time: 2,
+      },
+      {
+        pickup_location: 5,
+        delivery_location: 0,
+        order_demand: 1,
+        earliest_pickup: 15,
+        latest_pickup: 30,
+        pickup_service_time: 2,
+        earliest_delivery: 20,
+        latest_delivery: 60,
+        delivery_service_time: 2,
+      },
+    ],
+  },
+  {
+    id: 'multi-robot-warehouse',
+    name: 'Multi-Robot Warehouse',
+    description: '3 robots handling different routes',
+    orders: [
+      {
+        pickup_location: 1,
+        delivery_location: 4,
+        order_demand: 1,
+        earliest_pickup: 0,
+        latest_pickup: 10,
+        pickup_service_time: 2,
+        earliest_delivery: 0,
+        latest_delivery: 45,
+        delivery_service_time: 2,
+      },
+      {
+        pickup_location: 3,
+        delivery_location: 5,
+        order_demand: 1,
+        earliest_pickup: 0,
+        latest_pickup: 10,
+        pickup_service_time: 2,
+        earliest_delivery: 0,
+        latest_delivery: 45,
+        delivery_service_time: 2,
+      },
+      {
+        pickup_location: 7,
+        delivery_location: 6,
+        order_demand: 1,
+        earliest_pickup: 0,
+        latest_pickup: 10,
+        pickup_service_time: 2,
+        earliest_delivery: 0,
+        latest_delivery: 45,
+        delivery_service_time: 2,
+      },
+    ],
+  },
+  {
+    id: 'processing-to-depot',
+    name: 'Processing to Depot',
+    description: 'After processing, move to depot',
+    orders: [
+      {
+        pickup_location: 4,
+        delivery_location: 0,
+        order_demand: 1,
+        earliest_pickup: 0,
+        latest_pickup: 20,
+        pickup_service_time: 2,
+        earliest_delivery: 10,
+        latest_delivery: 60,
+        delivery_service_time: 2,
+      },
+      {
+        pickup_location: 5,
+        delivery_location: 0,
+        order_demand: 1,
+        earliest_pickup: 0,
+        latest_pickup: 20,
+        pickup_service_time: 2,
+        earliest_delivery: 10,
+        latest_delivery: 60,
+        delivery_service_time: 2,
+      },
+      {
+        pickup_location: 6,
+        delivery_location: 0,
+        order_demand: 1,
+        earliest_pickup: 0,
+        latest_pickup: 20,
+        pickup_service_time: 2,
+        earliest_delivery: 10,
+        latest_delivery: 60,
+        delivery_service_time: 2,
+      },
+    ],
+  },
+  {
+    id: 'batch-processing',
+    name: 'Batch Processing',
+    description: 'Multiple orders to processing stations',
+    orders: [
+      {
+        pickup_location: 1,
+        delivery_location: 4,
+        order_demand: 2,
+        earliest_pickup: 0,
+        latest_pickup: 15,
+        pickup_service_time: 3,
+        earliest_delivery: 5,
+        latest_delivery: 50,
+        delivery_service_time: 3,
+      },
+      {
+        pickup_location: 2,
+        delivery_location: 5,
+        order_demand: 2,
+        earliest_pickup: 0,
+        latest_pickup: 15,
+        pickup_service_time: 3,
+        earliest_delivery: 5,
+        latest_delivery: 50,
+        delivery_service_time: 3,
+      },
+      {
+        pickup_location: 8,
+        delivery_location: 6,
+        order_demand: 2,
+        earliest_pickup: 0,
+        latest_pickup: 15,
+        pickup_service_time: 3,
+        earliest_delivery: 5,
+        latest_delivery: 50,
+        delivery_service_time: 3,
+      },
+    ],
+  },
+];
+
+export const DEFAULT_ORDER: TransportOrder = {
+  pickup_location: 1,
+  delivery_location: 4,
+  order_demand: 1,
+  earliest_pickup: 0,
+  latest_pickup: 10,
+  pickup_service_time: 2,
+  earliest_delivery: 0,
+  latest_delivery: 45,
+  delivery_service_time: 2,
+};
+
+export function getScenarioById(id: string): SampleScenario | undefined {
+  return SAMPLE_SCENARIOS.find(s => s.id === id);
+}
+
+export function getScenarioNames(): { id: string; name: string; description: string }[] {
+  return SAMPLE_SCENARIOS.map(s => ({
+    id: s.id,
+    name: s.name,
+    description: s.description,
+  }));
+}

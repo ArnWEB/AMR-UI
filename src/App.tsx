@@ -4,13 +4,16 @@ import { LeftPanel } from './components/dashboard/LeftPanel';
 import { CenterPanel } from './components/dashboard/CenterPanel';
 import { RightPanel } from './components/dashboard/RightPanel';
 import { useSimulationStore } from './store/useSimulationStore';
+import { connectWebSocket } from './services/rosBridge';
 
 function App() {
   const initializeAMRs = useSimulationStore(state => state.initializeAMRs);
 
   useEffect(() => {
-    // Initialize with 3 robots on load
     initializeAMRs(3);
+    connectWebSocket().catch(err => {
+      console.log('Could not connect to bridge server:', err);
+    });
   }, [initializeAMRs]);
 
   return (
@@ -21,6 +24,5 @@ function App() {
     />
   );
 }
-
 
 export default App;

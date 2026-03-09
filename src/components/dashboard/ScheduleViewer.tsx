@@ -1,759 +1,580 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Calendar, 
   Clock, 
   CheckCircle2, 
-  Circle, 
   AlertCircle, 
-  SkipForward, 
-  XCircle,
   Package,
-  Wrench,
-  Zap,
   Truck,
-  ArrowRightLeft,
-  Warehouse,
-  Info,
   Users,
-  Box,
-  Activity,
-  Timer,
   X,
-  ChevronRight,
-  MapPin
+  Send,
+  Edit3,
+  Trash2,
+  Play,
+  Square,
+  CheckSquare,
+  Loader2,
+  XCircle,
+  Plus,
+  Database,
+  ChevronDown,
+  ArrowRight
 } from 'lucide-react';
-import { ScheduleEntry, ScheduleStatus, WeekDay } from '@/types/schedule';
-import { 
-  getScheduleTypeColor, 
-  getStatusColor, 
-  formatTime,
-  getWeekDayLabel,
-  getScheduleTypeLabel
-} from '@/types/schedule';
-import { getScheduleForDay } from '@/data/scheduleData';
-import { useSimulationStore } from '@/store/useSimulationStore';
+import { ManagedOrder, TransportOrder, OrderStatus, CuOptPlan } from '@/types/cuopt';
+import { PICKUP_OPTIONS, DELIVERY_OPTIONS, getNodeName } from '@/data/nodeMapping';
+import { SAMPLE_SCENARIOS, getScenarioNames } from '@/data/sampleOrders';
+import { submitOrders, isWebSocketConnected, subscribeToMessages, fetchLatestPlan } from '@/services/rosBridge';
 
-// Type icon mapping
-const getTypeIcon = (type: string) => {
-  switch (type) {
-    case 'inbound': return <Truck className="w-4 h-4" />;
-    case 'outbound': return <Package className="w-4 h-4" />;
-    case 'processing': return <Warehouse className="w-4 h-4" />;
-    case 'storage': return <Warehouse className="w-4 h-4" />;
-    case 'maintenance': return <Wrench className="w-4 h-4" />;
-    case 'charging': return <Zap className="w-4 h-4" />;
-    case 'cross_dock': return <ArrowRightLeft className="w-4 h-4" />;
-    default: return <Circle className="w-4 h-4" />;
-  }
-};
-
-// Status icon mapping
-const getStatusIcon = (status: ScheduleStatus) => {
+// Status colors matching schedule viewer
+const getStatusColor = (status: OrderStatus): string => {
   switch (status) {
+    case 'pending': return '#d97706'; // amber-600
+    case 'sending': return '#2563eb'; // blue-600
+    case 'sent': return '#2563eb';    // blue-600
+    case 'completed': return '#16a34a'; // green-600
+    case 'failed': return '#dc2626';   // red-600
+    default: return '#6b7280';         // gray-500
+  }
+};
+
+const getStatusBgColor = (status: OrderStatus): string => {
+  switch (status) {
+    case 'pending': return '#fef3c7'; // amber-100
+    case 'sending': return '#dbeafe'; // blue-100
+    case 'sent': return '#dbeafe';     // blue-100
+    case 'completed': return '#dcfce7'; // green-100
+    case 'failed': return '#fee2e2';   // red-100
+    default: return '#f3f4f6';         // gray-100
+  }
+};
+
+const getStatusIcon = (status: OrderStatus) => {
+  switch (status) {
+    case 'pending': return <Clock className="w-4 h-4" />;
+    case 'sending': return <Loader2 className="w-4 h-4 animate-spin" />;
+    case 'sent': return <Truck className="w-4 h-4" />;
     case 'completed': return <CheckCircle2 className="w-4 h-4" />;
-    case 'active': return <Circle className="w-4 h-4 animate-pulse" />;
-    case 'scheduled': return <Clock className="w-4 h-4" />;
-    case 'skipped': return <SkipForward className="w-4 h-4" />;
     case 'failed': return <XCircle className="w-4 h-4" />;
-    case 'overdue': return <AlertCircle className="w-4 h-4" />;
-    default: return <Circle className="w-4 h-4" />;
+    default: return <Clock className="w-4 h-4" />;
   }
 };
 
-// Day selector component
-const DaySelector: React.FC<{
-  selectedDay: string;
-  onSelect: (day: string) => void;
-}> = ({ selectedDay, onSelect }) => {
-  const days: WeekDay[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-  
-  return (
-    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-      {days.map(day => (
-        <button
-          key={day}
-          onClick={() => onSelect(day)}
-          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-            selectedDay === day
-              ? 'bg-white shadow-sm text-slate-900'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          {day.charAt(0).toUpperCase() + day.slice(1)}
-        </button>
-      ))}
-    </div>
-  );
-};
-
-// AMR Assignment Detail Component
-const AMRAssignmentDetail: React.FC<{
-  amrId: string;
-  schedule: ScheduleEntry;
-  itemCount: number;
-  isPending?: boolean;
-}> = ({ amrId, schedule, itemCount, isPending = false }) => {
-  const amrs = useSimulationStore((state) => state.amrs);
-  const amr = amrs.find(a => a.id === amrId);
-  
-  // Calculate estimated work hours for this task
-  const workHours = (schedule.estimatedDuration / 60).toFixed(1);
-  
-  if (isPending || !amr) {
-    // Show pending/to-be-decided state
-    const displayId = amrId === 'TBD' ? 'AMR-3' : amrId;
-    return (
-      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200 border-dashed">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center border-2 border-dashed border-amber-300">
-              <span className="text-xs font-bold text-amber-600">TBD</span>
-            </div>
-            <div>
-              <div className="font-medium text-sm text-slate-900">{displayId}</div>
-              <div className="text-xs text-amber-600 font-medium flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                Yet to be decided
-              </div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-slate-500">Status</div>
-            <div className="text-sm font-semibold text-amber-600">Pending Assignment</div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-amber-200">
-          <div>
-            <div className="text-xs text-slate-500">Est. Work Hours</div>
-            <div className="text-sm font-semibold text-slate-900">{workHours}h</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Items Pending</div>
-            <div className="text-sm font-semibold text-amber-700">{itemCount} items</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500">Est. Distance</div>
-            <div className="text-sm font-semibold text-slate-900">~{(schedule.estimatedDuration * 2.5).toFixed(0)}m</div>
-          </div>
-        </div>
-        
-        <div className="mt-2 text-xs text-amber-700 bg-amber-100 px-2 py-1.5 rounded flex items-center gap-1">
-          <AlertCircle className="w-3 h-3" />
-          This AMR will be assigned from available pool closer to task time
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-            <CheckCircle2 className="w-4 h-4 text-green-600" />
-          </div>
-          <div>
-            <div className="font-medium text-sm text-slate-900">{amrId}</div>
-            <div className="text-xs text-green-600 font-medium flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" />
-              Scheduled
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-xs text-slate-500">Current Battery</div>
-          <div className={`text-sm font-semibold ${amr.battery < 20 ? 'text-red-600' : 'text-green-600'}`}>
-            {amr.battery}%
-          </div>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-green-200">
-        <div>
-          <div className="text-xs text-slate-500">Work Hours</div>
-          <div className="text-sm font-semibold text-slate-900">{workHours}h</div>
-        </div>
-        <div>
-          <div className="text-xs text-slate-500">Items Assigned</div>
-          <div className="text-sm font-semibold text-green-700">{itemCount} items</div>
-        </div>
-        <div>
-          <div className="text-xs text-slate-500">Est. Distance</div>
-          <div className="text-sm font-semibold text-slate-900">~{(schedule.estimatedDuration * 2.5).toFixed(0)}m</div>
-        </div>
-      </div>
-      
-      {itemCount > 0 && schedule.cargoCount && (
-        <div className="mt-2 text-xs text-green-700 bg-green-100 px-2 py-1 rounded">
-          Load weight: ~{(itemCount * 25).toFixed(0)}kg • Ready for task execution
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Task Detail Modal
-const TaskDetailModal: React.FC<{
-  schedule: ScheduleEntry | null;
+// Edit Modal
+const EditOrderModal: React.FC<{
+  order: ManagedOrder;
+  onSave: (order: TransportOrder) => void;
   onClose: () => void;
-}> = ({ schedule, onClose }) => {
-  // Get AMRs from store first (hooks must be called unconditionally)
-  const amrs = useSimulationStore((state) => state.amrs);
-  
-  if (!schedule) return null;
-  
-  const typeColor = getScheduleTypeColor(schedule.type);
-  const statusColor = getStatusColor(schedule.status);
-  
-  // Determine AMR assignments - show 2 assigned and 1 pending for demo
-  let confirmedAMRs: string[] = [];
-  let pendingAMRs: string[] = [];
-  
-  if (schedule.targetAMRs && schedule.targetAMRs.length > 0) {
-    // Use predefined assignments
-    confirmedAMRs = schedule.targetAMRs.slice(0, 2);
-    if (schedule.targetAMRs.length > 2) {
-      pendingAMRs = schedule.targetAMRs.slice(2);
-    } else {
-      // Add one pending slot if needed for demo
-      pendingAMRs = ['TBD'];
-    }
-  } else {
-    // Auto-assign: pick 2 available AMRs and show AMR-3 as pending
-    const availableAMRs = amrs.filter(a => a.status !== 'error').map(a => a.id);
-    confirmedAMRs = availableAMRs.slice(0, 2);
-    // Always show AMR-3 as "Yet to be decided" for demo purposes
-    pendingAMRs = ['AMR-3'];
-  }
-  
-  // Calculate item distribution
-  const totalItems = schedule.cargoCount || 0;
-  const itemsPerConfirmedAMR = totalItems > 0 ? Math.floor(totalItems / 3) : 0;
-  const itemsForPendingAMR = totalItems > 0 ? totalItems - (itemsPerConfirmedAMR * 2) : 0;
-  
+}> = ({ order, onSave, onClose }) => {
+  const [editedOrder, setEditedOrder] = useState<TransportOrder>({ ...order.order });
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between" style={{ backgroundColor: `${typeColor}10` }}>
-          <div className="flex items-center gap-3">
-            <div 
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: `${typeColor}20`, color: typeColor }}
-            >
-              {getTypeIcon(schedule.type)}
-            </div>
-            <div>
-              <h3 className="font-bold text-lg text-slate-900">{schedule.title}</h3>
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <span>{getScheduleTypeLabel(schedule.type)}</span>
-                <span>•</span>
-                <span className="capitalize" style={{ color: statusColor }}>{schedule.status}</span>
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-slate-500" />
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h3 className="font-semibold text-lg">Edit Order</h3>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+            <X className="w-5 h-5" />
           </button>
         </div>
         
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
-          {/* Description */}
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-slate-900 mb-2 flex items-center gap-2">
-              <Info className="w-4 h-4" />
-              Description
-            </h4>
-            <p className="text-slate-600 text-sm">{schedule.description}</p>
-          </div>
-          
-          {/* Time & Duration */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-slate-50 p-3 rounded-lg">
-              <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
-                <Clock className="w-3 h-3" />
-                Start Time
-              </div>
-              <div className="font-semibold text-slate-900">{formatTime(schedule.timeWindow.start)}</div>
-            </div>
-            <div className="bg-slate-50 p-3 rounded-lg">
-              <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
-                <Clock className="w-3 h-3" />
-                End Time
-              </div>
-              <div className="font-semibold text-slate-900">{formatTime(schedule.timeWindow.end)}</div>
-            </div>
-            <div className="bg-slate-50 p-3 rounded-lg">
-              <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
-                <Timer className="w-3 h-3" />
-                Duration
-              </div>
-              <div className="font-semibold text-slate-900">{schedule.estimatedDuration} min</div>
-            </div>
-          </div>
-          
-          {/* Zones */}
-          {(schedule.sourceZone || schedule.targetZone) && (
-            <div className="mb-6">
-              <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Route
-              </h4>
-              <div className="flex items-center gap-4">
-                {schedule.sourceZone && (
-                  <div className="bg-blue-50 px-4 py-2 rounded-lg border border-blue-200">
-                    <div className="text-xs text-blue-600 mb-1">Source</div>
-                    <div className="font-semibold text-blue-900 text-sm">{schedule.sourceZone}</div>
-                  </div>
-                )}
-                <ChevronRight className="w-5 h-5 text-slate-400" />
-                {schedule.targetZone && (
-                  <div className="bg-green-50 px-4 py-2 rounded-lg border border-green-200">
-                    <div className="text-xs text-green-600 mb-1">Destination</div>
-                    <div className="font-semibold text-green-900 text-sm">{schedule.targetZone}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {/* Cargo Details */}
-          {schedule.cargoCount && (
-            <div className="mb-6">
-              <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <Box className="w-4 h-4" />
-                Cargo Details
-              </h4>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-slate-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-slate-900">{schedule.cargoCount}</div>
-                  <div className="text-xs text-slate-500">Total Items</div>
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-slate-900">
-                    {Math.ceil(schedule.cargoCount / 3)}
-                  </div>
-                  <div className="text-xs text-slate-500">Per AMR (Planned)</div>
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-slate-900">
-                    ~{schedule.cargoCount * 25}kg
-                  </div>
-                  <div className="text-xs text-slate-500">Est. Weight</div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* AMR Assignments */}
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              AMR Assignments
-              <span className="text-xs font-normal text-slate-500">
-                ({confirmedAMRs.length} confirmed, {pendingAMRs.length} pending)
-              </span>
-            </h4>
-            
-            {/* Confirmed AMRs */}
-            <div className="space-y-3 mb-4">
-              <div className="text-xs font-medium text-green-700 uppercase tracking-wide flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                Assigned & Confirmed
-              </div>
-              {confirmedAMRs.map((amrId) => (
-                <AMRAssignmentDetail 
-                  key={amrId} 
-                  amrId={amrId} 
-                  schedule={schedule}
-                  itemCount={itemsPerConfirmedAMR}
-                  isPending={false}
-                />
-              ))}
-            </div>
-            
-            {/* Pending AMRs */}
-            {pendingAMRs.length > 0 && (
-              <div className="space-y-3">
-                <div className="text-xs font-medium text-amber-700 uppercase tracking-wide flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  Yet to Be Assigned
-                </div>
-                {pendingAMRs.map((amrId, idx) => (
-                  <AMRAssignmentDetail 
-                    key={`pending-${amrId}-${idx}`} 
-                    amrId={amrId} 
-                    schedule={schedule}
-                    itemCount={itemsForPendingAMR}
-                    isPending={true}
-                  />
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Location</label>
+              <select
+                value={editedOrder.pickup_location}
+                onChange={(e) => setEditedOrder({ ...editedOrder, pickup_location: parseInt(e.target.value) })}
+                className="w-full p-2 border rounded-md"
+              >
+                {PICKUP_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
-              </div>
-            )}
-          </div>
-          
-          {/* Execution Log */}
-          {schedule.executionLog && schedule.executionLog.length > 0 && (
-            <div className="mb-6">
-              <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <Activity className="w-4 h-4" />
-                Execution History
-              </h4>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {schedule.executionLog.map((log, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg text-sm">
-                    <div className={`w-2 h-2 rounded-full ${log.success ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <div className="flex-1">
-                      <div className="font-medium text-slate-900">{log.action}</div>
-                      <div className="text-xs text-slate-500">
-                        {new Date(log.timestamp).toLocaleTimeString()} • {log.amrId}
-                      </div>
-                    </div>
-                    <div className="text-slate-600">{log.duration}min</div>
-                  </div>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Location</label>
+              <select
+                value={editedOrder.delivery_location}
+                onChange={(e) => setEditedOrder({ ...editedOrder, delivery_location: parseInt(e.target.value) })}
+                className="w-full p-2 border rounded-md"
+              >
+                {DELIVERY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
-              </div>
+              </select>
             </div>
-          )}
-          
-          {/* Priority & Recurrence */}
-          <div className="flex items-center gap-4 pt-4 border-t border-slate-200">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">Priority:</span>
-              <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded">
-                P{schedule.priority}
-              </span>
-            </div>
-            {schedule.recurring && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Recurring:</span>
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded">
-                  Weekly
-                </span>
-              </div>
-            )}
-            {schedule.dependsOn && schedule.dependsOn.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Dependencies:</span>
-                <span className="text-xs text-slate-700">
-                  {schedule.dependsOn.length} tasks
-                </span>
-              </div>
-            )}
           </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Demand</label>
+              <input
+                type="number"
+                min="1"
+                value={editedOrder.order_demand}
+                onChange={(e) => setEditedOrder({ ...editedOrder, order_demand: parseInt(e.target.value) || 1 })}
+                className="w-full p-2 border rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Service Time (min)</label>
+              <input
+                type="number"
+                min="1"
+                value={editedOrder.pickup_service_time || 2}
+                onChange={(e) => setEditedOrder({ ...editedOrder, pickup_service_time: parseInt(e.target.value) || 2 })}
+                className="w-full p-2 border rounded-md"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Earliest Pickup (s)</label>
+              <input
+                type="number"
+                min="0"
+                value={editedOrder.earliest_pickup || 0}
+                onChange={(e) => setEditedOrder({ ...editedOrder, earliest_pickup: parseInt(e.target.value) || 0 })}
+                className="w-full p-2 border rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Latest Pickup (s)</label>
+              <input
+                type="number"
+                min="0"
+                value={editedOrder.latest_pickup || 100}
+                onChange={(e) => setEditedOrder({ ...editedOrder, latest_pickup: parseInt(e.target.value) || 100 })}
+                className="w-full p-2 border rounded-md"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Earliest Delivery (s)</label>
+              <input
+                type="number"
+                min="0"
+                value={editedOrder.earliest_delivery || 0}
+                onChange={(e) => setEditedOrder({ ...editedOrder, earliest_delivery: parseInt(e.target.value) || 0 })}
+                className="w-full p-2 border rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Latest Delivery (s)</label>
+              <input
+                type="number"
+                min="0"
+                value={editedOrder.latest_delivery || 100}
+                onChange={(e) => setEditedOrder({ ...editedOrder, latest_delivery: parseInt(e.target.value) || 100 })}
+                className="w-full p-2 border rounded-md"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 p-4 border-t bg-gray-50">
+          <button onClick={onClose} className="px-4 py-2 border rounded-md hover:bg-gray-100">
+            Cancel
+          </button>
+          <button onClick={() => { onSave(editedOrder); onClose(); }} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            Save Changes
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// Schedule card component
-const ScheduleCard: React.FC<{ 
-  schedule: ScheduleEntry;
-  isCurrentTime: boolean;
-  onClick: () => void;
-}> = ({ schedule, isCurrentTime, onClick }) => {
-  const typeColor = getScheduleTypeColor(schedule.type);
-  const statusColor = getStatusColor(schedule.status);
+// Order Card Component (ScheduleCard style)
+const OrderCard: React.FC<{
+  order: ManagedOrder;
+  onSelect: () => void;
+  onEdit: () => void;
+  onSend: () => void;
+  onRemove: () => void;
+}> = ({ order, onSelect, onEdit, onSend, onRemove }) => {
+  const statusColor = getStatusColor(order.status);
+  const statusBg = getStatusBgColor(order.status);
   
   return (
-    <div 
-      onClick={onClick}
-      className={`p-3 rounded-lg border transition-all cursor-pointer ${
-        isCurrentTime 
-          ? 'bg-blue-50 border-blue-200 shadow-sm' 
-          : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
-      }`}
-    >
+    <div className="p-3 rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition-all">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
+          <button onClick={onSelect} className="mt-0.5">
+            {order.selected ? (
+              <CheckSquare className="w-5 h-5 text-blue-600" />
+            ) : (
+              <Square className="w-5 h-5 text-gray-400" />
+            )}
+          </button>
+          
           <div 
             className="p-2 rounded-lg"
-            style={{ backgroundColor: `${typeColor}20`, color: typeColor }}
+            style={{ backgroundColor: '#f3e8ff', color: '#9333ea' }}
           >
-            {getTypeIcon(schedule.type)}
+            <Package className="w-4 h-4" />
           </div>
+          
           <div>
-            <h4 className="font-semibold text-slate-900 text-sm">{schedule.title}</h4>
-            <p className="text-xs text-slate-500 mt-0.5">{schedule.description}</p>
-            <div className="flex items-center gap-3 mt-2 text-xs">
-              <span className="flex items-center gap-1 text-slate-600">
-                <Clock className="w-3 h-3" />
-                {formatTime(schedule.timeWindow.start)} - {formatTime(schedule.timeWindow.end)}
-              </span>
+            <h4 className="font-semibold text-slate-900 text-sm">
+              {getNodeName(order.order.pickup_location)} <ArrowRight className="w-3 h-3 inline mx-1" /> {getNodeName(order.order.delivery_location)}
+            </h4>
+            <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+              <span>Demand: {order.order.order_demand}</span>
               <span className="text-slate-400">•</span>
-              <span className="text-slate-600">{schedule.estimatedDuration} min</span>
-              {schedule.cargoCount && (
-                <>
-                  <span className="text-slate-400">•</span>
-                  <span className="text-slate-600">{schedule.cargoCount} items</span>
-                </>
-              )}
+              <span>Pickup: {order.order.earliest_pickup}-{order.order.latest_pickup}s</span>
+              <span className="text-slate-400">•</span>
+              <span>Delivery: {order.order.earliest_delivery}-{order.order.latest_delivery}s</span>
             </div>
           </div>
         </div>
+        
         <div 
           className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium"
-          style={{ backgroundColor: `${statusColor}20`, color: statusColor }}
+          style={{ backgroundColor: statusBg, color: statusColor }}
         >
-          {getStatusIcon(schedule.status)}
-          <span className="capitalize">{schedule.status}</span>
+          {getStatusIcon(order.status)}
+          <span className="capitalize">{order.status}</span>
         </div>
       </div>
       
-      {/* AMR Assignment Preview */}
-      {(schedule.targetAMRs && schedule.targetAMRs.length > 0) || schedule.autoAssign ? (
+      {/* AMR Assignment (like ScheduleCard) */}
+      {order.assignedAmr && (
         <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-3 h-3 text-slate-400" />
-            {schedule.targetAMRs && schedule.targetAMRs.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  {/* Show first 2 as confirmed */}
-                  {schedule.targetAMRs.slice(0, 2).map(amrId => (
-                    <span 
-                      key={amrId}
-                      className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium"
-                    >
-                      {amrId}
-                    </span>
-                  ))}
-                  {/* Show remaining as pending/amber */}
-                  {schedule.targetAMRs.slice(2, 3).map((_, idx) => (
-                    <span 
-                      key={`pending-${idx}`}
-                      className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium flex items-center gap-1"
-                    >
-                      <AlertCircle className="w-3 h-3" />
-                      TBD
-                    </span>
-                  ))}
-                </div>
-                {schedule.targetAMRs.length > 3 && (
-                  <span className="text-xs text-slate-500">
-                    +{schedule.targetAMRs.length - 3} more
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">Auto</span>
-                <span className="text-xs text-slate-500">(2 assigned, 1 pending)</span>
-              </div>
-            )}
+            <span className="text-xs text-slate-500">Assigned:</span>
+            <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
+              {order.assignedAmr}
+            </span>
           </div>
-          <button className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-            Details <ChevronRight className="w-3 h-3" />
+          {order.route && (
+            <span className="text-xs text-slate-500">
+              Route: {order.route.slice(0, 4).map(id => getNodeName(id)).join(' → ')}{order.route.length > 4 ? ' → ...' : ''}
+            </span>
+          )}
+        </div>
+      )}
+      
+      {/* Actions for pending orders */}
+      {order.status === 'pending' && (
+        <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end gap-2">
+          <button
+            onClick={onEdit}
+            className="flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-gray-50"
+          >
+            <Edit3 className="w-3 h-3" /> Edit
+          </button>
+          <button
+            onClick={onSend}
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            <Play className="w-3 h-3" /> Send
+          </button>
+          <button
+            onClick={onRemove}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+          >
+            <Trash2 className="w-3 h-3" />
           </button>
         </div>
-      ) : null}
+      )}
       
-      {/* Dependencies */}
-      {schedule.dependsOn && schedule.dependsOn.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-slate-100">
-          <span className="text-xs text-slate-500">
-            Depends on: {schedule.dependsOn.join(', ')}
-          </span>
+      {/* Sending status */}
+      {order.status === 'sending' && (
+        <div className="mt-2 pt-2 border-t border-slate-100 text-xs text-blue-600 flex items-center gap-2">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Sending to CuOpt...
+        </div>
+      )}
+      
+      {/* Failed status */}
+      {order.status === 'failed' && (
+        <div className="mt-2 pt-2 border-t border-slate-100 text-xs text-red-600 flex items-center gap-2">
+          <AlertCircle className="w-3 h-3" />
+          Failed to send. Try again.
         </div>
       )}
     </div>
   );
 };
 
-// Timeline view
-const TimelineView: React.FC<{
-  schedules: ScheduleEntry[];
-  onScheduleClick: (schedule: ScheduleEntry) => void;
-}> = ({ schedules, onScheduleClick }) => {
-  const currentTime = useMemo(() => {
-    const now = new Date();
-    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-  }, []);
-  
-  // Group schedules by hour
-  const groupedSchedules = useMemo(() => {
-    const grouped: Record<string, ScheduleEntry[]> = {};
-    schedules.forEach(schedule => {
-      const hour = schedule.timeWindow.start.split(':')[0];
-      if (!grouped[hour]) grouped[hour] = [];
-      grouped[hour].push(schedule);
-    });
-    return grouped;
-  }, [schedules]);
-  
+// Stats Component (like ScheduleStats)
+const OrderStats: React.FC<{
+  pending: number;
+  sent: number;
+  completed: number;
+}> = ({ pending, sent, completed }) => {
   return (
-    <div className="space-y-4">
-      {Object.entries(groupedSchedules)
-        .sort(([a], [b]) => parseInt(a) - parseInt(b))
-        .map(([hour, hourSchedules]) => (
-          <div key={hour} className="flex gap-4">
-            <div className="w-16 flex-shrink-0 pt-3">
-              <span className="text-sm font-semibold text-slate-700">
-                {formatTime(`${hour}:00`)}
-              </span>
-            </div>
-            <div className="flex-1 space-y-2">
-              {hourSchedules
-                .sort((a, b) => a.timeWindow.start.localeCompare(b.timeWindow.start))
-                .map(schedule => (
-                  <ScheduleCard 
-                    key={schedule.id} 
-                    schedule={schedule}
-                    isCurrentTime={currentTime >= schedule.timeWindow.start && currentTime <= schedule.timeWindow.end}
-                    onClick={() => onScheduleClick(schedule)}
-                  />
-                ))}
-            </div>
-          </div>
-        ))}
-    </div>
-  );
-};
-
-// Summary stats
-const ScheduleStats: React.FC<{
-  schedules: ScheduleEntry[];
-}> = ({ schedules }) => {
-  const stats = useMemo(() => {
-    const total = schedules.length;
-    const completed = schedules.filter(s => s.status === 'completed').length;
-    const active = schedules.filter(s => s.status === 'active').length;
-    const scheduled = schedules.filter(s => s.status === 'scheduled').length;
-    const overdue = schedules.filter(s => s.status === 'overdue').length;
-    
-    return { total, completed, active, scheduled, overdue };
-  }, [schedules]);
-  
-  return (
-    <div className="grid grid-cols-5 gap-3">
-      <div className="bg-white p-3 rounded-lg border border-slate-200">
-        <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
-        <div className="text-xs text-slate-500">Total Tasks</div>
+    <div className="grid grid-cols-3 gap-3">
+      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+        <div className="text-xs text-amber-600 font-medium uppercase">Pending</div>
+        <div className="text-2xl font-bold text-amber-700">{pending}</div>
       </div>
-      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-        <div className="text-2xl font-bold text-green-700">{stats.completed}</div>
-        <div className="text-xs text-green-600">Completed</div>
+      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+        <div className="text-xs text-blue-600 font-medium uppercase">In Progress</div>
+        <div className="text-2xl font-bold text-blue-700">{sent}</div>
       </div>
-      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-        <div className="text-2xl font-bold text-blue-700">{stats.active}</div>
-        <div className="text-xs text-blue-600">Active</div>
-      </div>
-      <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-        <div className="text-2xl font-bold text-slate-700">{stats.scheduled}</div>
-        <div className="text-xs text-slate-600">Scheduled</div>
-      </div>
-      <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-        <div className="text-2xl font-bold text-red-700">{stats.overdue}</div>
-        <div className="text-xs text-red-600">Overdue</div>
+      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+        <div className="text-xs text-green-600 font-medium uppercase">Completed</div>
+        <div className="text-2xl font-bold text-green-700">{completed}</div>
       </div>
     </div>
   );
 };
 
-// Main ScheduleViewer component
+// Main ScheduleViewer component (now Order Management)
 export const ScheduleViewer: React.FC = () => {
-  const [selectedDay, setSelectedDay] = useState<string>(() => {
-    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-    return days[new Date().getDay()];
-  });
-  const [viewMode, setViewMode] = useState<'timeline' | 'list'>('timeline');
-  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleEntry | null>(null);
-  
-  const schedules = useMemo(() => {
-    return getScheduleForDay(selectedDay);
-  }, [selectedDay]);
-  
-  const currentDate = useMemo(() => {
-    const today = new Date();
-    return {
-      dayName: getWeekDayLabel(selectedDay as WeekDay),
-      date: today.toLocaleDateString('en-US', { 
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
-      })
+  const [pendingOrders, setPendingOrders] = useState<ManagedOrder[]>([]);
+  const [sentOrders, setSentOrders] = useState<ManagedOrder[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [showSampleDropdown, setShowSampleDropdown] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<ManagedOrder | null>(null);
+  const [latestPlan, setLatestPlan] = useState<CuOptPlan | null>(null);
+
+  useEffect(() => {
+    const checkConnection = () => setIsConnected(isWebSocketConnected());
+    checkConnection();
+    const interval = setInterval(checkConnection, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToMessages((message) => {
+      if (message.type === 'cuopt_plan' && message.data) {
+        setLatestPlan(message.data);
+      }
+    });
+    fetchLatestPlan().then(p => { if (p?.plan_id) setLatestPlan(p); }).catch(() => {});
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (latestPlan) {
+      setSentOrders(sentOrders.map((order, idx) => {
+        const amrId = latestPlan.order_mapping?.[idx.toString()];
+        const amrAssignment = amrId ? `AMR-${amrId.replace('amr', '')}` : undefined;
+        const amrTasks = amrId ? latestPlan.assignments[amrId] : undefined;
+        return { ...order, assignedAmr: amrAssignment, route: amrTasks?.route };
+      }));
+    }
+  }, [latestPlan]);
+
+  const generateId = () => `order-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  const addOrder = () => {
+    const newOrder: ManagedOrder = {
+      id: generateId(),
+      order: { pickup_location: 1, delivery_location: 4, order_demand: 1, earliest_pickup: 0, latest_pickup: 10, pickup_service_time: 2, earliest_delivery: 0, latest_delivery: 45, delivery_service_time: 2 },
+      selected: false,
+      status: 'pending',
     };
-  }, [selectedDay]);
-  
+    setPendingOrders([...pendingOrders, newOrder]);
+  };
+
+  const loadSampleScenario = (scenarioId: string) => {
+    const scenario = SAMPLE_SCENARIOS.find(s => s.id === scenarioId);
+    if (scenario) {
+      const newOrders: ManagedOrder[] = scenario.orders.map(order => ({
+        id: generateId(),
+        order,
+        selected: false,
+        status: 'pending' as OrderStatus,
+      }));
+      setPendingOrders([...pendingOrders, ...newOrders]);
+    }
+    setShowSampleDropdown(false);
+  };
+
+  const removePendingOrder = (id: string) => setPendingOrders(pendingOrders.filter(o => o.id !== id));
+  const toggleOrderSelection = (id: string) => setPendingOrders(pendingOrders.map(o => o.id === id ? { ...o, selected: !o.selected } : o));
+  const selectAll = () => setPendingOrders(pendingOrders.map(o => ({ ...o, selected: true })));
+  const clearSelection = () => setPendingOrders(pendingOrders.map(o => ({ ...o, selected: false })));
+  const updateOrder = (id: string, updatedOrder: TransportOrder) => setPendingOrders(pendingOrders.map(o => o.id === id ? { ...o, order: updatedOrder } : o));
+
+  const sendOrders = async (ordersToSend: ManagedOrder[]) => {
+    if (ordersToSend.length === 0) return;
+    const sendingIds = ordersToSend.map(o => o.id);
+    setPendingOrders(pendingOrders.map(o => sendingIds.includes(o.id) ? { ...o, status: 'sending' as OrderStatus } : o));
+
+    try {
+      await submitOrders(ordersToSend.map(o => o.order));
+      setPendingOrders(pendingOrders.filter(o => !sendingIds.includes(o.id)));
+      const newSentOrders: ManagedOrder[] = ordersToSend.map(o => ({ ...o, status: 'sent' as OrderStatus, selected: false }));
+      setSentOrders([...sentOrders, ...newSentOrders]);
+      setTimeout(async () => {
+        try {
+          const plan = await fetchLatestPlan();
+          if (plan?.plan_id) setLatestPlan(plan);
+        } catch {}
+      }, 1000);
+    } catch {
+      setPendingOrders(pendingOrders.map(o => sendingIds.includes(o.id) ? { ...o, status: 'failed' as OrderStatus } : o));
+    }
+  };
+
+  const pendingSelectedCount = pendingOrders.filter(o => o.selected).length;
+  const completedCount = sentOrders.filter(o => o.status === 'completed').length;
+  const sentCount = sentOrders.filter(o => o.status === 'sent').length;
+
   return (
     <div className="h-full bg-slate-50 flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 p-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">AMR Schedule</h2>
+            <h2 className="text-xl font-bold text-slate-900">Schedule</h2>
             <p className="text-sm text-slate-500">
-              {currentDate.dayName}, {currentDate.date}
+              {isConnected ? 'Connected to server' : 'Disconnected'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="flex bg-slate-100 p-1 rounded-lg">
-              <button
-                onClick={() => setViewMode('timeline')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  viewMode === 'timeline'
-                    ? 'bg-white shadow-sm text-slate-900'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Timeline
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  viewMode === 'list'
-                    ? 'bg-white shadow-sm text-slate-900'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                List
+              <button className="px-3 py-1.5 rounded-md text-xs font-medium bg-white shadow-sm text-slate-900">
+                All Orders
               </button>
             </div>
-            <DaySelector selectedDay={selectedDay} onSelect={setSelectedDay} />
           </div>
         </div>
         
         {/* Stats */}
-        <ScheduleStats schedules={schedules} />
+        <OrderStats pending={pendingOrders.length} sent={sentCount} completed={completedCount} />
       </div>
-      
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {schedules.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500">No schedules for this day</p>
+        {/* Sample & Add Buttons */}
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <button
+              onClick={() => setShowSampleDropdown(!showSampleDropdown)}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm font-medium transition-colors"
+            >
+              <Database size={16} />
+              Load Sample
+              <ChevronDown size={14} />
+            </button>
+            
+            {showSampleDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
+                {getScenarioNames().map((scenario) => (
+                  <button
+                    key={scenario.id}
+                    onClick={() => loadSampleScenario(scenario.id)}
+                    className="w-full text-left px-3 py-2 hover:bg-purple-50 text-sm border-b last:border-b-0"
+                  >
+                    <div className="font-medium">{scenario.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{scenario.description}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <button
+            onClick={addOrder}
+            className="flex items-center gap-1 px-3 py-2 border border-slate-300 rounded-md hover:bg-slate-50 text-sm font-medium"
+          >
+            <Plus size={16} />
+            Add Order
+          </button>
+        </div>
+
+        {/* Selection Controls */}
+        {pendingOrders.length > 0 && (
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-slate-600">
+              Pending Orders ({pendingOrders.length})
+            </span>
+            <div className="flex gap-3">
+              <button onClick={selectAll} className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                <CheckSquare size={12} /> Select All
+              </button>
+              <button onClick={clearSelection} className="text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1">
+                <Square size={12} /> Clear
+              </button>
             </div>
           </div>
-        ) : viewMode === 'timeline' ? (
-          <TimelineView schedules={schedules} onScheduleClick={setSelectedSchedule} />
+        )}
+
+        {/* Pending Orders */}
+        {pendingOrders.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500">No orders</p>
+              <p className="text-xs text-slate-400">Load sample data or add orders manually</p>
+            </div>
+          </div>
         ) : (
-          <div className="space-y-2">
-            {schedules
-              .sort((a, b) => a.timeWindow.start.localeCompare(b.timeWindow.start))
-              .map(schedule => (
-                <ScheduleCard 
-                  key={schedule.id} 
-                  schedule={schedule}
-                  isCurrentTime={false}
-                  onClick={() => setSelectedSchedule(schedule)}
+          <div className="space-y-2 mb-4">
+            {pendingOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onSelect={() => toggleOrderSelection(order.id)}
+                onEdit={() => setEditingOrder(order)}
+                onSend={() => sendOrders([order])}
+                onRemove={() => removePendingOrder(order.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Send Buttons */}
+        {pendingOrders.length > 0 && (
+          <div className="flex gap-2 pt-3 border-t">
+            <button
+              onClick={() => sendOrders(pendingOrders.filter(o => o.selected))}
+              disabled={pendingSelectedCount === 0}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                pendingSelectedCount === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              <Send size={14} />
+              Send Selected ({pendingSelectedCount})
+            </button>
+            <button
+              onClick={() => sendOrders([...pendingOrders])}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
+            >
+              <Send size={14} />
+              Send All ({pendingOrders.length})
+            </button>
+          </div>
+        )}
+
+        {/* Sent Orders */}
+        {sentOrders.length > 0 && (
+          <div className="mt-6 pt-4 border-t">
+            <h3 className="text-sm font-medium uppercase tracking-wider text-slate-500 mb-3">
+              Ongoing / Sent Orders ({sentOrders.length})
+            </h3>
+            <div className="space-y-2">
+              {sentOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onSelect={() => {}}
+                  onEdit={() => {}}
+                  onSend={() => {}}
+                  onRemove={() => setSentOrders(sentOrders.filter(o => o.id !== order.id))}
                 />
               ))}
+            </div>
           </div>
         )}
       </div>
-      
-      {/* Detail Modal */}
-      {selectedSchedule && (
-        <TaskDetailModal 
-          schedule={selectedSchedule} 
-          onClose={() => setSelectedSchedule(null)} 
+
+      {/* Edit Modal */}
+      {editingOrder && (
+        <EditOrderModal
+          order={editingOrder}
+          onSave={(updatedOrder) => updateOrder(editingOrder.id, updatedOrder)}
+          onClose={() => setEditingOrder(null)}
         />
       )}
     </div>
