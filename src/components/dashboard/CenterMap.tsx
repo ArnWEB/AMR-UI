@@ -3,7 +3,8 @@ import { Stage, Layer, Rect, Circle, Line, Text, Group, Path } from 'react-konva
 
 import { useSimulationStore } from '@/store/useSimulationStore';
 import { Html } from 'react-konva-utils';
-import { WAREHOUSE_GRAPH, findPath, findNearestNode } from '@/utils/pathfinding';
+import { findPath, findNearestNode } from '@/utils/pathfinding';
+import { loadWaypointGraph, getWarehouseGraph, GraphNode } from '@/config/waypointConfig';
 
 // Detailed Storage Rack Component (like in the image)
 const DetailedRack: React.FC<{ x: number; y: number; rows: number; cols: number; color?: 'blue' | 'green' }> = ({
@@ -13,9 +14,9 @@ const DetailedRack: React.FC<{ x: number; y: number; rows: number; cols: number;
     const cellHeight = 6;
     const gap = 1;
 
-    const bgColor = color === 'green' ? '#d1fae5' : '#dbeafe';
-    const cellColor = color === 'green' ? '#86efac' : '#93c5fd';
-    const borderColor = color === 'green' ? '#34d399' : '#60a5fa';
+    const bgColor = color === 'green' ? '#d1fae5' : '#FFFBEB'; // light-yellow
+    const cellColor = color === 'green' ? '#86efac' : '#fef08a'; // yellow-200
+    const borderColor = color === 'green' ? '#34d399' : '#F2CC0D'; // brand-yellow
 
     return (
         <Group x={x} y={y}>
@@ -61,6 +62,20 @@ export const CenterMap: React.FC = () => {
     const { amrs, isRunning, selectAMR, selectedAmrId, showHeatmap } = useSimulationStore();
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+    const [warehouseGraph, setWarehouseGraph] = useState<Record<string, GraphNode>>({});
+
+    useEffect(() => {
+        // Try to load waypoint graph from server
+        loadWaypointGraph()
+            .then(() => {
+                console.log('[CenterMap] Waypoint graph loaded from server');
+                setWarehouseGraph(getWarehouseGraph());
+            })
+            .catch(() => {
+                console.log('[CenterMap] Using default graph');
+                setWarehouseGraph(getWarehouseGraph());
+            });
+    }, []);
 
     useEffect(() => {
         const updateSize = () => {
@@ -132,9 +147,9 @@ export const CenterMap: React.FC = () => {
 
                     {/* PATHWAYS - Graph edges */}
                     <Group>
-                        {Object.values(WAREHOUSE_GRAPH).map(node =>
+                        {Object.values(warehouseGraph).map(node =>
                             node.neighbors.map(neighborId => {
-                                const neighbor = WAREHOUSE_GRAPH[neighborId];
+                                const neighbor = warehouseGraph[neighborId];
                                 return (
                                     <Line
                                         key={`${node.id}-${neighborId}`}
@@ -149,12 +164,12 @@ export const CenterMap: React.FC = () => {
                     </Group>
 
                     {/* STORAGE RACKS - Detailed like in image */}
-                    {/* Top row - Blue racks */}
+                    {/* Top row - Yellow racks */}
                     <DetailedRack x={110} y={40} rows={20} cols={8} color="blue" />
                     <DetailedRack x={240} y={40} rows={20} cols={8} color="blue" />
                     <DetailedRack x={430} y={40} rows={20} cols={8} color="blue" />
 
-                    {/* Bottom row - Blue racks */}
+                    {/* Bottom row - Yellow racks */}
                     <DetailedRack x={110} y={340} rows={20} cols={8} color="blue" />
                     <DetailedRack x={240} y={340} rows={20} cols={8} color="blue" />
                     <DetailedRack x={430} y={340} rows={20} cols={8} color="blue" />
@@ -167,7 +182,7 @@ export const CenterMap: React.FC = () => {
                     <ChargingStation x={700} y={300} />
 
                     {/* GRAPH NODES - Interactive waypoint markers */}
-                    {Object.entries(WAREHOUSE_GRAPH).map(([nodeId, node]) => {
+                    {Object.entries(warehouseGraph).map(([nodeId, node]) => {
                         const isStartNode = ['L1', 'L2', 'L3', 'L4', 'L5'].includes(nodeId);
                         return (
                             <Group
@@ -201,7 +216,7 @@ export const CenterMap: React.FC = () => {
                                 )}
                                 <Circle
                                     radius={8}
-                                    fill={isStartNode ? '#2563eb' : (selectedAmrId ? '#10b981' : '#94a3b8')}
+                                    fill={isStartNode ? '#F2CC0D' : (selectedAmrId ? '#10b981' : '#94a3b8')}
                                     opacity={0.9}
                                     stroke="#ffffff"
                                     strokeWidth={2}
@@ -245,22 +260,22 @@ export const CenterMap: React.FC = () => {
                 <Layer>
                     {amrs.map((amr) => {
                         const isSelected = selectedAmrId === amr.id;
-                        const hasCargo = amr.status === 'loading' || amr.status === 'unloading' || 
+                        const hasCargo = amr.status === 'loading' || amr.status === 'unloading' ||
                             (amr.currentTask && ['loading', 'unloading'].includes(amr.status) === false);
-                        
+
                         // Status colors
                         const getStatusColor = () => {
-                            switch(amr.status) {
+                            switch (amr.status) {
                                 case 'error': return '#ef4444';
                                 case 'loading': return '#f59e0b'; // amber
                                 case 'unloading': return '#8b5cf6'; // purple
-                                case 'moving': return '#3b82f6'; // blue
+                                case 'moving': return '#F2CC0D'; // yellow
                                 default: return '#22c55e'; // green
                             }
                         };
-                        
+
                         const statusColor = getStatusColor();
-                        
+
                         return (
                             <Group key={amr.id}>
                                 {isSelected && amr.path.length > 0 && (
@@ -269,7 +284,7 @@ export const CenterMap: React.FC = () => {
                                             amr.position.x, amr.position.y,
                                             ...amr.path.flatMap(p => [p.x, p.y])
                                         ]}
-                                        stroke="#3b82f6"
+                                        stroke="#F2CC0D"
                                         strokeWidth={2}
                                         dash={[8, 4]}
                                         opacity={0.6}
@@ -287,11 +302,11 @@ export const CenterMap: React.FC = () => {
                                 >
                                     {isSelected && (
                                         <Group>
-                                            <Circle radius={20} stroke="#3b82f6" strokeWidth={1.5} opacity={0.4} dash={[6, 4]} />
-                                            <Circle radius={16} stroke="#3b82f6" strokeWidth={2} opacity={0.7} />
+                                            <Circle radius={20} stroke="#F2CC0D" strokeWidth={1.5} opacity={0.4} dash={[6, 4]} />
+                                            <Circle radius={16} stroke="#F2CC0D" strokeWidth={2} opacity={0.7} />
                                         </Group>
                                     )}
-                                    
+
                                     {/* Loading/Unloading indicator */}
                                     {(amr.status === 'loading' || amr.status === 'unloading') && (
                                         <Group>
@@ -299,7 +314,7 @@ export const CenterMap: React.FC = () => {
                                             <Circle radius={22} stroke={statusColor} strokeWidth={1} opacity={0.2} dash={[4, 4]} rotation={45} />
                                         </Group>
                                     )}
-                                    
+
                                     <Group>
                                         <Rect
                                             x={-10}
@@ -308,7 +323,7 @@ export const CenterMap: React.FC = () => {
                                             height={20}
                                             cornerRadius={3}
                                             fill={amr.status === 'error' ? '#fee2e2' : '#ffffff'}
-                                            stroke={isSelected ? '#3b82f6' : statusColor}
+                                            stroke={isSelected ? '#000000' : statusColor}
                                             strokeWidth={2}
                                             shadowColor="black"
                                             shadowBlur={8}
@@ -326,7 +341,7 @@ export const CenterMap: React.FC = () => {
                                         />
                                         <Rect x={8} y={-6} width={2} height={12} fill={amr.status === 'moving' ? '#fbbf24' : '#94a3b8'} cornerRadius={1} />
                                     </Group>
-                                    
+
                                     {/* Cargo box on AMR */}
                                     {hasCargo && (
                                         <Group y={-18}>
@@ -353,15 +368,15 @@ export const CenterMap: React.FC = () => {
                                             />
                                         </Group>
                                     )}
-                                    
+
                                     <Html>
                                         <div
                                             className={`
                                                 text-[9px] px-1.5 py-0.5 rounded-md text-white font-bold pointer-events-none transform -translate-x-1/2 mt-4 whitespace-nowrap shadow-md
-                                                ${amr.status === 'error' ? 'bg-red-600' : 
-                                                  amr.status === 'loading' ? 'bg-amber-500' :
-                                                  amr.status === 'unloading' ? 'bg-purple-500' :
-                                                  'bg-slate-800'}
+                                                ${amr.status === 'error' ? 'bg-red-600' :
+                                                    amr.status === 'loading' ? 'bg-amber-500' :
+                                                        amr.status === 'unloading' ? 'bg-purple-500' :
+                                                            'bg-slate-800'}
                                             `}
                                         >
                                             {amr.id}
@@ -390,9 +405,9 @@ export const CenterMap: React.FC = () => {
             </div>
 
             {/* Instructions */}
-            <div className="absolute bottom-4 left-4 bg-blue-50 border border-blue-200 px-3 py-2 rounded-lg shadow-md text-[10px] text-blue-900 z-10 pointer-events-none max-w-xs">
+            <div className="absolute bottom-4 left-4 bg-brand-light-yellow border border-brand-yellow/30 px-3 py-2 rounded-lg shadow-md text-[10px] text-black z-10 pointer-events-none max-w-xs">
                 <div className="font-bold mb-1">📦 Inbound → Storage Workflow</div>
-                <div className="text-blue-700">
+                <div className="text-black">
                     1. Start simulation to auto-assign tasks<br />
                     2. AMR picks up cargo at Pallet Zone<br />
                     3. Delivers to Storage Rack<br />
@@ -404,7 +419,7 @@ export const CenterMap: React.FC = () => {
             <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur px-3 py-2 rounded-lg border shadow-md text-[10px] text-slate-600 z-10 pointer-events-none space-y-1">
                 <div className="font-bold text-xs mb-2">Workflow Legend</div>
                 <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-100 border border-blue-400 rounded-sm"></div>
+                    <div className="w-3 h-3 bg-brand-light-yellow border border-brand-yellow rounded-sm"></div>
                     <span>Storage Racks</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -412,7 +427,7 @@ export const CenterMap: React.FC = () => {
                     <span>Graph Paths</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-brand-yellow rounded-full"></div>
                     <span>Dock (Start)</span>
                 </div>
                 <div className="flex items-center gap-2">

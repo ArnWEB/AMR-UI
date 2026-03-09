@@ -100,7 +100,7 @@ export const LeftPanel: React.FC = () => {
                         />
                         <label htmlFor="heatmap" className="text-sm cursor-pointer select-none">Show Traffic Heatmap</label>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                         <input
                             type="checkbox"
@@ -111,7 +111,7 @@ export const LeftPanel: React.FC = () => {
                         />
                         <label htmlFor="autoAssign" className="text-sm cursor-pointer select-none">Auto-assign Tasks</label>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                         <input
                             type="checkbox"
@@ -200,22 +200,21 @@ export const LeftPanel: React.FC = () => {
             </div>
 
             {/* Phase 3: Demo Scenarios */}
-            <div className="space-y-3 border rounded-lg p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-                <h3 className="text-sm font-medium uppercase tracking-wider text-blue-700 flex items-center gap-2">
+            <div className="space-y-3 border rounded-lg p-4 bg-gradient-to-br from-brand-light-yellow to-brand-light-pink border-brand-yellow/30">
+                <h3 className="text-sm font-medium uppercase tracking-wider text-brand-yellow flex items-center gap-2">
                     Demo Scenarios
                 </h3>
-                
+
                 <div className="space-y-2">
                     {store.demoScenarios.map((scenario) => (
                         <button
                             key={scenario.id}
                             onClick={() => store.loadDemoScenario(scenario.id)}
                             disabled={store.isRunning}
-                            className={`w-full p-2 text-left text-xs border rounded transition-all ${
-                                store.activeDemoScenario === scenario.id
-                                    ? 'bg-blue-100 border-blue-300 text-blue-800'
-                                    : 'bg-white border-slate-200 hover:bg-blue-50'
-                            } disabled:opacity-50`}
+                            className={`w-full p-2 text-left text-xs border rounded transition-all ${store.activeDemoScenario === scenario.id
+                                    ? 'bg-brand-light-yellow border-brand-yellow/30 text-black'
+                                    : 'bg-white border-slate-200 hover:bg-brand-light-yellow'
+                                } disabled:opacity-50`}
                         >
                             <div className="font-semibold">{scenario.name}</div>
                             <div className="text-[10px] text-slate-500 mt-0.5">{scenario.description}</div>
@@ -232,7 +231,7 @@ export const LeftPanel: React.FC = () => {
             {/* Phase 3: Export & Tools */}
             <div className="space-y-3 border rounded-lg p-4 bg-secondary/20">
                 <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Tools</h3>
-                
+
                 <button
                     onClick={() => {
                         const report = store.exportReport();
@@ -250,7 +249,7 @@ export const LeftPanel: React.FC = () => {
                 >
                     <span>Export Report</span>
                 </button>
-                
+
                 <button
                     onClick={() => store.clearAllTasks()}
                     disabled={store.isRunning}

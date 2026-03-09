@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { 
-  Clock, 
-  Zap, 
-  PauseCircle, 
+import {
+  Clock,
+  Zap,
+  PauseCircle,
   Activity,
   AlertTriangle,
   CheckCircle2
@@ -21,14 +21,14 @@ const generateHourlyData = (amrId: string): TimeSlot[] => {
   // Vary patterns slightly based on AMR ID
   const amrOffset = parseInt(amrId.replace(/\D/g, '')) || 0;
   const currentHour = new Date().getHours();
-  
+
   for (let i = 0; i < 24; i++) {
     const hour = (currentHour - 23 + i + 24) % 24;
-    
+
     // Simulate realistic warehouse patterns with AMR-specific variations
     let status: TimeSlot['status'];
     const adjustedRand = Math.random() + (amrOffset * 0.01); // Slight variation per AMR
-    
+
     if (hour >= 22 || hour < 6) {
       // Night time - mostly charging
       status = adjustedRand > 0.2 ? 'charging' : 'idle';
@@ -44,14 +44,14 @@ const generateHourlyData = (amrId: string): TimeSlot[] => {
       else if (adjustedRand > 0.4) status = 'charging';
       else status = 'idle';
     }
-    
+
     slots.push({
       hour,
       status,
       task: status === 'working' ? `Task ${(amrOffset % 10) + 1}` : undefined
     });
   }
-  
+
   return slots;
 };
 
@@ -59,7 +59,7 @@ const getStatusColor = (status: string): string => {
   const colors: Record<string, string> = {
     working: '#22c55e',      // Green
     idle: '#94a3b8',         // Gray
-    charging: '#3b82f6',     // Blue
+    charging: '#000000',     // Black
     maintenance: '#f59e0b',  // Amber
     error: '#ef4444'         // Red
   };
@@ -95,7 +95,7 @@ const AMRTimelineRow: React.FC<{
 }> = ({ amrId, hourlyData }) => {
   const amrs = useSimulationStore((state) => state.amrs);
   const amr = amrs.find(a => a.id === amrId);
-  
+
   // Calculate utilization stats
   const stats = useMemo(() => {
     const total = hourlyData.length;
@@ -104,7 +104,7 @@ const AMRTimelineRow: React.FC<{
     const charging = hourlyData.filter(s => s.status === 'charging').length;
     const maintenance = hourlyData.filter(s => s.status === 'maintenance').length;
     const error = hourlyData.filter(s => s.status === 'error').length;
-    
+
     return {
       working: (working / total) * 100,
       idle: (idle / total) * 100,
@@ -114,7 +114,7 @@ const AMRTimelineRow: React.FC<{
       utilization: (working / total) * 100
     };
   }, [hourlyData]);
-  
+
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-4 mb-3">
       {/* AMR Header */}
@@ -127,9 +127,9 @@ const AMRTimelineRow: React.FC<{
             <div className="font-semibold text-slate-900">{amrId}</div>
             <div className="flex items-center gap-2 text-xs">
               <span className="text-slate-500">Current Status:</span>
-              <span 
+              <span
                 className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                style={{ 
+                style={{
                   backgroundColor: `${getStatusColor(amr?.status || 'idle')}20`,
                   color: getStatusColor(amr?.status || 'idle')
                 }}
@@ -140,7 +140,7 @@ const AMRTimelineRow: React.FC<{
             </div>
           </div>
         </div>
-        
+
         {/* Quick Stats */}
         <div className="flex items-center gap-4">
           <div className="text-right">
@@ -155,7 +155,7 @@ const AMRTimelineRow: React.FC<{
           </div>
         </div>
       </div>
-      
+
       {/* 24-Hour Timeline */}
       <div className="mb-3">
         <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
@@ -185,7 +185,7 @@ const AMRTimelineRow: React.FC<{
           <span>23:00</span>
         </div>
       </div>
-      
+
       {/* Utilization Breakdown */}
       <div className="grid grid-cols-5 gap-2">
         <div className="bg-green-50 rounded p-2 text-center">
@@ -200,9 +200,9 @@ const AMRTimelineRow: React.FC<{
             <PauseCircle className="w-3 h-3" /> Idle
           </div>
         </div>
-        <div className="bg-blue-50 rounded p-2 text-center">
-          <div className="text-lg font-bold text-blue-700">{stats.charging.toFixed(0)}%</div>
-          <div className="text-xs text-blue-600 flex items-center justify-center gap-1">
+        <div className="bg-brand-light-yellow border border-brand-yellow/30 rounded p-2 text-center">
+          <div className="text-lg font-bold text-black">{stats.charging.toFixed(0)}%</div>
+          <div className="text-xs text-brand-yellow flex items-center justify-center gap-1">
             <Zap className="w-3 h-3" /> Charging
           </div>
         </div>
@@ -230,7 +230,7 @@ const UtilizationSummary: React.FC<{
   const summary = useMemo(() => {
     const allSlots = Object.values(allHourlyData).flat();
     const total = allSlots.length;
-    
+
     return {
       working: (allSlots.filter(s => s.status === 'working').length / total) * 100,
       idle: (allSlots.filter(s => s.status === 'idle').length / total) * 100,
@@ -239,49 +239,49 @@ const UtilizationSummary: React.FC<{
       error: (allSlots.filter(s => s.status === 'error').length / total) * 100
     };
   }, [allHourlyData]);
-  
+
   const amrCount = Object.keys(allHourlyData).length;
   const avgUtilization = summary.working;
-  
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
       <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
         <CheckCircle2 className="w-5 h-5 text-green-600" />
         Fleet Utilization Summary (Last 24h)
       </h3>
-      
+
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <div className="bg-slate-50 rounded-lg p-3">
           <div className="text-2xl font-bold text-slate-900">{amrCount}</div>
           <div className="text-xs text-slate-600">Total AMRs</div>
         </div>
-        
+
         <div className="bg-green-50 rounded-lg p-3">
           <div className="text-2xl font-bold text-green-700">{summary.working.toFixed(1)}%</div>
           <div className="text-xs text-green-600">Avg Working</div>
         </div>
-        
+
         <div className="bg-slate-50 rounded-lg p-3">
           <div className="text-2xl font-bold text-slate-700">{summary.idle.toFixed(1)}%</div>
           <div className="text-xs text-slate-600">Avg Idle</div>
         </div>
-        
-        <div className="bg-blue-50 rounded-lg p-3">
-          <div className="text-2xl font-bold text-blue-700">{summary.charging.toFixed(1)}%</div>
-          <div className="text-xs text-blue-600">Avg Charging</div>
+
+        <div className="bg-brand-light-yellow border border-brand-yellow/30 rounded-lg p-3">
+          <div className="text-2xl font-bold text-black">{summary.charging.toFixed(1)}%</div>
+          <div className="text-xs text-brand-yellow">Avg Charging</div>
         </div>
-        
+
         <div className="bg-amber-50 rounded-lg p-3">
           <div className="text-2xl font-bold text-amber-700">{summary.maintenance.toFixed(1)}%</div>
           <div className="text-xs text-amber-600">Maintenance</div>
         </div>
-        
+
         <div className="bg-red-50 rounded-lg p-3">
           <div className="text-2xl font-bold text-red-700">{summary.error.toFixed(1)}%</div>
           <div className="text-xs text-red-600">Error Time</div>
         </div>
       </div>
-      
+
       {/* Fleet Average Bar */}
       <div className="mt-4">
         <div className="flex items-center justify-between text-sm mb-2">
@@ -289,23 +289,23 @@ const UtilizationSummary: React.FC<{
           <span className="font-semibold text-slate-900">{avgUtilization.toFixed(1)}%</span>
         </div>
         <div className="h-4 bg-slate-100 rounded-full overflow-hidden flex">
-          <div 
+          <div
             className="h-full bg-green-500"
             style={{ width: `${summary.working}%` }}
           />
-          <div 
+          <div
             className="h-full bg-slate-400"
             style={{ width: `${summary.idle}%` }}
           />
-          <div 
-            className="h-full bg-blue-500"
+          <div
+            className="h-full bg-black"
             style={{ width: `${summary.charging}%` }}
           />
-          <div 
+          <div
             className="h-full bg-amber-500"
             style={{ width: `${summary.maintenance}%` }}
           />
-          <div 
+          <div
             className="h-full bg-red-500"
             style={{ width: `${summary.error}%` }}
           />
@@ -313,7 +313,7 @@ const UtilizationSummary: React.FC<{
         <div className="flex gap-4 mt-2 text-xs">
           <span className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded" /> Working</span>
           <span className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-400 rounded" /> Idle</span>
-          <span className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-500 rounded" /> Charging</span>
+          <span className="flex items-center gap-1"><div className="w-2 h-2 bg-black rounded" /> Charging</span>
           <span className="flex items-center gap-1"><div className="w-2 h-2 bg-amber-500 rounded" /> Maint.</span>
           <span className="flex items-center gap-1"><div className="w-2 h-2 bg-red-500 rounded" /> Error</span>
         </div>
@@ -325,7 +325,7 @@ const UtilizationSummary: React.FC<{
 // Main AMR Utilization Component
 export const AMRUtilization: React.FC = () => {
   const amrs = useSimulationStore((state) => state.amrs);
-  
+
   // Generate hourly data for each AMR
   const allHourlyData = useMemo(() => {
     const data: Record<string, TimeSlot[]> = {};
@@ -334,23 +334,23 @@ export const AMRUtilization: React.FC = () => {
     });
     return data;
   }, [amrs]);
-  
+
   return (
     <div className="space-y-4">
       {/* Summary */}
       <UtilizationSummary allHourlyData={allHourlyData} />
-      
+
       {/* Individual AMR Timelines */}
       <div>
         <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-blue-600" />
+          <Clock className="w-5 h-5 text-brand-yellow" />
           Individual AMR Utilization (24h Timeline)
         </h3>
-        
+
         {amrs.map(amr => (
-          <AMRTimelineRow 
-            key={amr.id} 
-            amrId={amr.id} 
+          <AMRTimelineRow
+            key={amr.id}
+            amrId={amr.id}
             hourlyData={allHourlyData[amr.id] || []}
           />
         ))}

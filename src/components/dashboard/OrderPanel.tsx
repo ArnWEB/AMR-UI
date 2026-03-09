@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Send, Database, Loader2, CheckCircle, AlertCircle, 
+import {
+  Send, Database, Loader2, CheckCircle, AlertCircle,
   X, Edit3, Trash2, Square, CheckSquare, Clock,
   Package, Truck, ArrowRight, Play, XCircle,
   ChevronDown, Plus
@@ -28,8 +28,8 @@ const getStatusIcon = (status: OrderStatus) => {
 const getStatusColor = (status: OrderStatus) => {
   switch (status) {
     case 'pending': return 'bg-amber-50 border-amber-200';
-    case 'sending': return 'bg-blue-50 border-blue-200';
-    case 'sent': return 'bg-blue-50 border-blue-200';
+    case 'sending': return 'bg-brand-light-yellow border-brand-yellow/30';
+    case 'sent': return 'bg-brand-light-yellow border-brand-yellow/30';
     case 'completed': return 'bg-green-50 border-green-200';
     case 'failed': return 'bg-red-50 border-red-200';
     default: return 'bg-gray-50 border-gray-200';
@@ -58,7 +58,7 @@ const EditOrderModal: React.FC<{
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -86,7 +86,7 @@ const EditOrderModal: React.FC<{
               </select>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Demand</label>
@@ -161,7 +161,7 @@ const EditOrderModal: React.FC<{
           <button onClick={onClose} className="px-4 py-2 border rounded-md hover:bg-gray-100">
             Cancel
           </button>
-          <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <button onClick={handleSave} className="px-4 py-2 bg-black text-white rounded-md hover:bg-black/80">
             Save Changes
           </button>
         </div>
@@ -196,7 +196,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
 
     fetchLatestPlan().then(p => {
       if (p && p.plan_id) setLatestPlan(p);
-    }).catch(() => {});
+    }).catch(() => { });
 
     return () => unsubscribe();
   }, []);
@@ -242,7 +242,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
   };
 
   const toggleOrderSelection = (id: string) => {
-    setPendingOrders(pendingOrders.map(o => 
+    setPendingOrders(pendingOrders.map(o =>
       o.id === id ? { ...o, selected: !o.selected } : o
     ));
   };
@@ -256,7 +256,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
   };
 
   const updateOrder = (id: string, updatedOrder: TransportOrder) => {
-    setPendingOrders(pendingOrders.map(o => 
+    setPendingOrders(pendingOrders.map(o =>
       o.id === id ? { ...o, order: updatedOrder } : o
     ));
   };
@@ -266,24 +266,24 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
 
     // Mark as sending
     const sendingIds = ordersToSend.map(o => o.id);
-    setPendingOrders(pendingOrders.map(o => 
+    setPendingOrders(pendingOrders.map(o =>
       sendingIds.includes(o.id) ? { ...o, status: 'sending' as OrderStatus } : o
     ));
 
     try {
       const ordersData = ordersToSend.map(o => o.order);
       await submitOrders(ordersData);
-      
+
       // Move to sent orders
       setPendingOrders(pendingOrders.filter(o => !sendingIds.includes(o.id)));
-      
+
       const newSentOrders: ManagedOrder[] = ordersToSend.map(o => ({
         ...o,
         status: 'sent' as OrderStatus,
         selected: false,
       }));
       setSentOrders([...sentOrders, ...newSentOrders]);
-      
+
       // Refresh plan to get assignments
       setTimeout(async () => {
         try {
@@ -292,14 +292,14 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
             setLatestPlan(plan);
             updateOrderAssignments(plan);
           }
-        } catch {}
+        } catch { }
       }, 1000);
-      
+
       onOrdersSubmitted?.(newSentOrders);
     } catch (error) {
       console.error('Failed to send orders:', error);
       // Mark as failed
-      setPendingOrders(pendingOrders.map(o => 
+      setPendingOrders(pendingOrders.map(o =>
         sendingIds.includes(o.id) ? { ...o, status: 'failed' as OrderStatus } : o
       ));
     }
@@ -311,7 +311,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
       const amrId = plan.order_mapping?.[orderIndex.toString()];
       const amrAssignment = amrId ? `AMR-${amrId.replace('amr', '')}` : undefined;
       const amrTasks = amrId ? plan.assignments[amrId] : undefined;
-      
+
       return {
         ...order,
         assignedAmr: amrAssignment,
@@ -364,7 +364,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
             Load Sample
             <ChevronDown size={14} />
           </button>
-          
+
           {showSampleDropdown && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
               {getScenarioNames().map((scenario) => (
@@ -380,7 +380,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
             </div>
           )}
         </div>
-        
+
         <button
           onClick={addOrder}
           className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm font-medium"
@@ -400,7 +400,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
             <div className="flex gap-2">
               <button
                 onClick={selectAll}
-                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                className="text-xs text-brand-yellow hover:text-brand-yellow/80 flex items-center gap-1"
               >
                 <CheckSquare size={12} /> Select All
               </button>
@@ -429,12 +429,12 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
                   className="mt-0.5"
                 >
                   {order.selected ? (
-                    <CheckSquare className="w-5 h-5 text-blue-600" />
+                    <CheckSquare className="w-5 h-5 text-brand-yellow" />
                   ) : (
                     <Square className="w-5 h-5 text-gray-400" />
                   )}
                 </button>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium text-sm">
@@ -444,7 +444,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
                       {getStatusIcon(order.status)}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>Demand: {order.order.order_demand}</span>
                     <span>Pickup: {order.order.earliest_pickup}-{order.order.latest_pickup}s</span>
@@ -452,7 +452,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
                   </div>
                 </div>
               </div>
-              
+
               {order.status === 'pending' && (
                 <div className="flex justify-end gap-2 mt-2 pt-2 border-t">
                   <button
@@ -463,7 +463,7 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
                   </button>
                   <button
                     onClick={() => sendOrders([order])}
-                    className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-black/80"
                   >
                     <Play size={12} /> Send
                   </button>
@@ -475,14 +475,14 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
                   </button>
                 </div>
               )}
-              
+
               {order.status === 'sending' && (
-                <div className="flex items-center gap-2 mt-2 pt-2 border-t text-xs text-blue-600">
+                <div className="flex items-center gap-2 mt-2 pt-2 border-t text-xs text-brand-yellow">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Sending to CuOpt...
                 </div>
               )}
-              
+
               {order.status === 'failed' && (
                 <div className="flex items-center gap-2 mt-2 pt-2 border-t text-xs text-red-600">
                   <AlertCircle className="w-3 h-3" />
@@ -500,11 +500,10 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
           <button
             onClick={sendSelected}
             disabled={pendingSelectedCount === 0}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-              pendingSelectedCount === 0
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${pendingSelectedCount === 0
                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
+                : 'bg-black hover:bg-black/80 text-white'
+              }`}
           >
             <Send size={14} />
             Send Selected ({pendingSelectedCount})
@@ -525,14 +524,14 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
           <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-3">
             Ongoing / Sent Orders ({sentOrders.length})
           </h3>
-          
+
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {sentOrders.map((order) => (
-              <div key={order.id} className="p-3 rounded-lg border bg-blue-50 border-blue-200">
+              <div key={order.id} className="p-3 rounded-lg border bg-brand-light-yellow border-brand-yellow/30">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
                     {order.status === 'sent' ? (
-                      <Truck className="w-4 h-4 text-blue-600" />
+                      <Truck className="w-4 h-4 text-brand-yellow" />
                     ) : (
                       <CheckCircle className="w-4 h-4 text-green-600" />
                     )}
@@ -541,12 +540,12 @@ export const OrderPanel: React.FC<OrderFormProps> = ({ onOrdersSubmitted }) => {
                     </span>
                   </div>
                   {order.assignedAmr && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-brand-yellow/20 text-black px-2 py-0.5 rounded-full">
                       {order.assignedAmr}
                     </span>
                   )}
                 </div>
-                
+
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span>Demand: {order.order.order_demand}</span>
                   {order.route && (

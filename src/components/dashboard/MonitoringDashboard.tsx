@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, 
-    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
+import {
+    LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie,
+    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import { 
-    Activity, Clock, Package, Zap, TrendingUp, 
-    BarChart3, PieChart as PieIcon, AlertTriangle 
+import {
+    Activity, Clock, Package, Zap, TrendingUp,
+    BarChart3, PieChart as PieIcon, AlertTriangle
 } from 'lucide-react';
 import { AMRUtilization } from './AMRUtilization';
 
@@ -47,7 +47,7 @@ const dailyPerformanceData = [
 
 // Zone utilization data
 const zoneUtilizationData = [
-    { name: 'Dock Left', utilization: 85, capacity: 100, color: '#3b82f6' },
+    { name: 'Dock Left', utilization: 85, capacity: 100, color: '#000000' },
     { name: 'Processing', utilization: 72, capacity: 80, color: '#f59e0b' },
     { name: 'Storage Top', utilization: 65, capacity: 75, color: '#22c55e' },
     { name: 'Storage Bottom', utilization: 58, capacity: 70, color: '#8b5cf6' },
@@ -58,7 +58,7 @@ const zoneUtilizationData = [
 const taskDistributionData = [
     { name: 'Completed', value: 85, color: '#22c55e' },
     { name: 'In Progress', value: 10, color: '#f59e0b' },
-    { name: 'Pending', value: 3, color: '#3b82f6' },
+    { name: 'Pending', value: 3, color: '#000000' },
     { name: 'Failed', value: 2, color: '#ef4444' },
 ];
 
@@ -104,7 +104,7 @@ export const MonitoringDashboard: React.FC = () => {
                     <p className="text-sm text-slate-500">Real-time warehouse performance metrics</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <select 
+                    <select
                         value={timeRange}
                         onChange={(e) => setTimeRange(e.target.value as 'today' | 'week' | 'month')}
                         className="px-3 py-2 border rounded-lg bg-white text-sm"
@@ -113,7 +113,7 @@ export const MonitoringDashboard: React.FC = () => {
                         <option value="week">This Week</option>
                         <option value="month">This Month</option>
                     </select>
-                    <button className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                    <button className="px-3 py-2 bg-black text-white rounded-lg text-sm hover:bg-black/80 transition-colors">
                         Export Report
                     </button>
                 </div>
@@ -127,8 +127,8 @@ export const MonitoringDashboard: React.FC = () => {
                             <p className="text-xs text-slate-500 uppercase">Active AMRs</p>
                             <p className="text-2xl font-bold text-slate-800">{animatedMetrics.active}</p>
                         </div>
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Activity className="w-5 h-5 text-blue-600" />
+                        <div className="w-10 h-10 bg-brand-light-yellow rounded-full flex items-center justify-center">
+                            <Activity className="w-5 h-5 text-brand-yellow" />
                         </div>
                     </div>
                     <div className="flex items-center gap-1 mt-2">
@@ -200,28 +200,28 @@ export const MonitoringDashboard: React.FC = () => {
                         <AreaChart data={hourlyThroughputData}>
                             <defs>
                                 <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                    <stop offset="5%" stopColor="#F2CC0D" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#F2CC0D" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                             <XAxis dataKey="hour" stroke="#94a3b8" fontSize={10} />
                             <YAxis stroke="#94a3b8" fontSize={10} />
-                            <Tooltip 
-                                contentStyle={{ 
-                                    backgroundColor: '#fff', 
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: '#fff',
                                     border: '1px solid #e2e8f0',
                                     borderRadius: '8px',
                                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
                                 }}
                             />
-                            <Area 
-                                type="monotone" 
-                                dataKey="tasks" 
-                                stroke="#3b82f6" 
+                            <Area
+                                type="monotone"
+                                dataKey="tasks"
+                                stroke="#F2CC0D"
                                 strokeWidth={2}
-                                fillOpacity={1} 
-                                fill="url(#colorTasks)" 
+                                fillOpacity={1}
+                                fill="url(#colorTasks)"
                             />
                         </AreaChart>
                     </ResponsiveContainer>
@@ -234,7 +234,7 @@ export const MonitoringDashboard: React.FC = () => {
                             <Clock className="w-5 h-5 text-slate-600" />
                             <h3 className="font-semibold text-slate-800">AMR Working Hours</h3>
                         </div>
-                        <select 
+                        <select
                             value={selectedAMR}
                             onChange={(e) => setSelectedAMR(e.target.value)}
                             className="text-xs border rounded px-2 py-1"
@@ -250,14 +250,14 @@ export const MonitoringDashboard: React.FC = () => {
                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                             <XAxis type="number" stroke="#94a3b8" fontSize={10} />
                             <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={10} width={60} />
-                            <Tooltip 
-                                contentStyle={{ 
-                                    backgroundColor: '#fff', 
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: '#fff',
                                     border: '1px solid #e2e8f0',
                                     borderRadius: '8px'
                                 }}
                             />
-                            <Bar dataKey="hours" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                            <Bar dataKey="hours" fill="#F2CC0D" radius={[0, 4, 4, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -274,7 +274,7 @@ export const MonitoringDashboard: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-4 text-xs">
                             <span className="flex items-center gap-1">
-                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                <div className="w-2 h-2 rounded-full bg-brand-yellow"></div>
                                 Tasks
                             </span>
                             <span className="flex items-center gap-1">
@@ -289,26 +289,26 @@ export const MonitoringDashboard: React.FC = () => {
                             <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} />
                             <YAxis yAxisId="left" stroke="#94a3b8" fontSize={10} />
                             <YAxis yAxisId="right" orientation="right" stroke="#94a3b8" fontSize={10} />
-                            <Tooltip 
-                                contentStyle={{ 
-                                    backgroundColor: '#fff', 
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: '#fff',
                                     border: '1px solid #e2e8f0',
                                     borderRadius: '8px'
                                 }}
                             />
-                            <Line 
+                            <Line
                                 yAxisId="left"
-                                type="monotone" 
-                                dataKey="tasks" 
-                                stroke="#3b82f6" 
+                                type="monotone"
+                                dataKey="tasks"
+                                stroke="#F2CC0D"
                                 strokeWidth={2}
-                                dot={{ fill: '#3b82f6', r: 4 }}
+                                dot={{ fill: '#F2CC0D', r: 4 }}
                             />
-                            <Line 
+                            <Line
                                 yAxisId="right"
-                                type="monotone" 
-                                dataKey="efficiency" 
-                                stroke="#22c55e" 
+                                type="monotone"
+                                dataKey="efficiency"
+                                stroke="#22c55e"
                                 strokeWidth={2}
                                 dot={{ fill: '#22c55e', r: 4 }}
                             />
@@ -339,9 +339,9 @@ export const MonitoringDashboard: React.FC = () => {
                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                             </Pie>
-                            <Tooltip 
-                                contentStyle={{ 
-                                    backgroundColor: '#fff', 
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: '#fff',
                                     border: '1px solid #e2e8f0',
                                     borderRadius: '8px'
                                 }}
@@ -351,8 +351,8 @@ export const MonitoringDashboard: React.FC = () => {
                     <div className="grid grid-cols-2 gap-1 mt-2">
                         {taskDistributionData.map((item) => (
                             <div key={item.name} className="flex items-center gap-1 text-xs">
-                                <div 
-                                    className="w-2 h-2 rounded-full" 
+                                <div
+                                    className="w-2 h-2 rounded-full"
                                     style={{ backgroundColor: item.color }}
                                 />
                                 <span className="text-slate-600">{item.name}: {item.value}%</span>
@@ -379,9 +379,9 @@ export const MonitoringDashboard: React.FC = () => {
                                 <span className="text-slate-500">{zone.utilization}%</span>
                             </div>
                             <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div 
+                                <div
                                     className="h-full rounded-full transition-all duration-500"
-                                    style={{ 
+                                    style={{
                                         width: `${zone.utilization}%`,
                                         backgroundColor: zone.color
                                     }}
@@ -429,17 +429,16 @@ export const MonitoringDashboard: React.FC = () => {
                                     <td className="py-2 px-3 text-sm text-slate-600">{amr.hours}h</td>
                                     <td className="py-2 px-3 text-sm text-slate-600">{amr.tasks}</td>
                                     <td className="py-2 px-3">
-                                        <span className={`text-sm font-medium ${
-                                            amr.efficiency >= 90 ? 'text-green-600' : 
-                                            amr.efficiency >= 85 ? 'text-amber-600' : 'text-red-600'
-                                        }`}>
+                                        <span className={`text-sm font-medium ${amr.efficiency >= 90 ? 'text-green-600' :
+                                                amr.efficiency >= 85 ? 'text-amber-600' : 'text-red-600'
+                                            }`}>
                                             {amr.efficiency}%
                                         </span>
                                     </td>
                                     <td className="py-2 px-3">
                                         <div className="flex items-center gap-2">
                                             <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                <div 
+                                                <div
                                                     className="h-full bg-green-500 rounded-full"
                                                     style={{ width: `${amr.battery}%` }}
                                                 />

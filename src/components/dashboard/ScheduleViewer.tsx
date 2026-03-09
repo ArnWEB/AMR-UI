@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  Clock,
+  CheckCircle2,
+  AlertCircle,
   Package,
   Truck,
   Users,
@@ -29,8 +29,8 @@ import { submitOrders, isWebSocketConnected, subscribeToMessages, fetchLatestPla
 const getStatusColor = (status: OrderStatus): string => {
   switch (status) {
     case 'pending': return '#d97706'; // amber-600
-    case 'sending': return '#2563eb'; // blue-600
-    case 'sent': return '#2563eb';    // blue-600
+    case 'sending': return '#000000'; // black
+    case 'sent': return '#000000';    // black
     case 'completed': return '#16a34a'; // green-600
     case 'failed': return '#dc2626';   // red-600
     default: return '#6b7280';         // gray-500
@@ -40,8 +40,8 @@ const getStatusColor = (status: OrderStatus): string => {
 const getStatusBgColor = (status: OrderStatus): string => {
   switch (status) {
     case 'pending': return '#fef3c7'; // amber-100
-    case 'sending': return '#dbeafe'; // blue-100
-    case 'sent': return '#dbeafe';     // blue-100
+    case 'sending': return '#FFFBEB'; // light-yellow
+    case 'sent': return '#FFFBEB';     // light-yellow
     case 'completed': return '#dcfce7'; // green-100
     case 'failed': return '#fee2e2';   // red-100
     default: return '#f3f4f6';         // gray-100
@@ -76,7 +76,7 @@ const EditOrderModal: React.FC<{
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -104,7 +104,7 @@ const EditOrderModal: React.FC<{
               </select>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Demand</label>
@@ -179,7 +179,7 @@ const EditOrderModal: React.FC<{
           <button onClick={onClose} className="px-4 py-2 border rounded-md hover:bg-gray-100">
             Cancel
           </button>
-          <button onClick={() => { onSave(editedOrder); onClose(); }} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <button onClick={() => { onSave(editedOrder); onClose(); }} className="px-4 py-2 bg-black text-white rounded-md hover:bg-black/80">
             Save Changes
           </button>
         </div>
@@ -198,26 +198,26 @@ const OrderCard: React.FC<{
 }> = ({ order, onSelect, onEdit, onSend, onRemove }) => {
   const statusColor = getStatusColor(order.status);
   const statusBg = getStatusBgColor(order.status);
-  
+
   return (
     <div className="p-3 rounded-lg border border-slate-200 bg-white hover:border-slate-300 transition-all">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
           <button onClick={onSelect} className="mt-0.5">
             {order.selected ? (
-              <CheckSquare className="w-5 h-5 text-blue-600" />
+              <CheckSquare className="w-5 h-5 text-brand-yellow" />
             ) : (
               <Square className="w-5 h-5 text-gray-400" />
             )}
           </button>
-          
-          <div 
+
+          <div
             className="p-2 rounded-lg"
             style={{ backgroundColor: '#f3e8ff', color: '#9333ea' }}
           >
             <Package className="w-4 h-4" />
           </div>
-          
+
           <div>
             <h4 className="font-semibold text-slate-900 text-sm">
               {getNodeName(order.order.pickup_location)} <ArrowRight className="w-3 h-3 inline mx-1" /> {getNodeName(order.order.delivery_location)}
@@ -231,8 +231,8 @@ const OrderCard: React.FC<{
             </div>
           </div>
         </div>
-        
-        <div 
+
+        <div
           className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium"
           style={{ backgroundColor: statusBg, color: statusColor }}
         >
@@ -240,7 +240,7 @@ const OrderCard: React.FC<{
           <span className="capitalize">{order.status}</span>
         </div>
       </div>
-      
+
       {/* AMR Assignment (like ScheduleCard) */}
       {order.assignedAmr && (
         <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
@@ -258,7 +258,7 @@ const OrderCard: React.FC<{
           )}
         </div>
       )}
-      
+
       {/* Actions for pending orders */}
       {order.status === 'pending' && (
         <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end gap-2">
@@ -270,7 +270,7 @@ const OrderCard: React.FC<{
           </button>
           <button
             onClick={onSend}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-black text-white rounded hover:bg-black/80"
           >
             <Play className="w-3 h-3" /> Send
           </button>
@@ -282,15 +282,15 @@ const OrderCard: React.FC<{
           </button>
         </div>
       )}
-      
+
       {/* Sending status */}
       {order.status === 'sending' && (
-        <div className="mt-2 pt-2 border-t border-slate-100 text-xs text-blue-600 flex items-center gap-2">
+        <div className="mt-2 pt-2 border-t border-slate-100 text-xs text-brand-yellow flex items-center gap-2">
           <Loader2 className="w-3 h-3 animate-spin" />
           Sending to CuOpt...
         </div>
       )}
-      
+
       {/* Failed status */}
       {order.status === 'failed' && (
         <div className="mt-2 pt-2 border-t border-slate-100 text-xs text-red-600 flex items-center gap-2">
@@ -314,9 +314,9 @@ const OrderStats: React.FC<{
         <div className="text-xs text-amber-600 font-medium uppercase">Pending</div>
         <div className="text-2xl font-bold text-amber-700">{pending}</div>
       </div>
-      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-        <div className="text-xs text-blue-600 font-medium uppercase">In Progress</div>
-        <div className="text-2xl font-bold text-blue-700">{sent}</div>
+      <div className="bg-brand-light-yellow rounded-lg p-3 border border-brand-yellow/30">
+        <div className="text-xs text-black font-medium uppercase">In Progress</div>
+        <div className="text-2xl font-bold text-black">{sent}</div>
       </div>
       <div className="bg-green-50 rounded-lg p-3 border border-green-200">
         <div className="text-xs text-green-600 font-medium uppercase">Completed</div>
@@ -348,7 +348,7 @@ export const ScheduleViewer: React.FC = () => {
         setLatestPlan(message.data);
       }
     });
-    fetchLatestPlan().then(p => { if (p?.plan_id) setLatestPlan(p); }).catch(() => {});
+    fetchLatestPlan().then(p => { if (p?.plan_id) setLatestPlan(p); }).catch(() => { });
     return () => unsubscribe();
   }, []);
 
@@ -409,7 +409,7 @@ export const ScheduleViewer: React.FC = () => {
         try {
           const plan = await fetchLatestPlan();
           if (plan?.plan_id) setLatestPlan(plan);
-        } catch {}
+        } catch { }
       }, 1000);
     } catch {
       setPendingOrders(pendingOrders.map(o => sendingIds.includes(o.id) ? { ...o, status: 'failed' as OrderStatus } : o));
@@ -439,7 +439,7 @@ export const ScheduleViewer: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Stats */}
         <OrderStats pending={pendingOrders.length} sent={sentCount} completed={completedCount} />
       </div>
@@ -457,7 +457,7 @@ export const ScheduleViewer: React.FC = () => {
               Load Sample
               <ChevronDown size={14} />
             </button>
-            
+
             {showSampleDropdown && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
                 {getScenarioNames().map((scenario) => (
@@ -473,7 +473,7 @@ export const ScheduleViewer: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           <button
             onClick={addOrder}
             className="flex items-center gap-1 px-3 py-2 border border-slate-300 rounded-md hover:bg-slate-50 text-sm font-medium"
@@ -490,7 +490,7 @@ export const ScheduleViewer: React.FC = () => {
               Pending Orders ({pendingOrders.length})
             </span>
             <div className="flex gap-3">
-              <button onClick={selectAll} className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+              <button onClick={selectAll} className="text-xs text-brand-yellow hover:text-brand-yellow/80 flex items-center gap-1">
                 <CheckSquare size={12} /> Select All
               </button>
               <button onClick={clearSelection} className="text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1">
@@ -530,9 +530,8 @@ export const ScheduleViewer: React.FC = () => {
             <button
               onClick={() => sendOrders(pendingOrders.filter(o => o.selected))}
               disabled={pendingSelectedCount === 0}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                pendingSelectedCount === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${pendingSelectedCount === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-black hover:bg-black/80 text-white'
+                }`}
             >
               <Send size={14} />
               Send Selected ({pendingSelectedCount})
@@ -558,9 +557,9 @@ export const ScheduleViewer: React.FC = () => {
                 <OrderCard
                   key={order.id}
                   order={order}
-                  onSelect={() => {}}
-                  onEdit={() => {}}
-                  onSend={() => {}}
+                  onSelect={() => { }}
+                  onEdit={() => { }}
+                  onSend={() => { }}
                   onRemove={() => setSentOrders(sentOrders.filter(o => o.id !== order.id))}
                 />
               ))}

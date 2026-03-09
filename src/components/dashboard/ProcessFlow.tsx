@@ -29,7 +29,7 @@ export const ProcessFlow: React.FC = () => {
                                 <div className={`
                                     w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white transition-colors
                                     ${step.status === 'completed' ? 'border-green-500 text-green-500' :
-                                        step.status === 'active' ? 'border-blue-500 text-blue-500 shadow-md ring-2 ring-blue-100' :
+                                        step.status === 'active' ? 'border-brand-yellow text-brand-yellow shadow-md ring-2 ring-brand-yellow/30' :
                                             'border-slate-300 text-slate-300'}
                                 `}>
                                     {step.status === 'completed' ? <CheckCircle2 size={18} /> :

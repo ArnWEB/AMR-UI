@@ -25,27 +25,27 @@ export interface ScheduleEntry {
     type: ScheduleType;
     timeWindow: TimeWindow;
     days: WeekDay[];
-    
+
     // AMR Assignment
     targetAMRs?: string[];  // null or empty = all available AMRs
     autoAssign: boolean;    // If true, scheduler picks best AMR
-    
+
     // Priority & Scheduling
     priority: number;       // 1 (highest) to 10 (lowest)
     recurring: boolean;     // Is this a recurring schedule?
-    
+
     // Task Details
     cargoCount?: number;    // Number of items to process
     sourceZone?: string;    // Source zone ID
     targetZone?: string;    // Target zone ID
     estimatedDuration: number; // Estimated duration in minutes
-    
+
     // Status Tracking
     status: ScheduleStatus;
     createdAt: string;
     scheduledDate?: string; // For non-recurring schedules
     executionLog?: ScheduleExecutionRecord[];
-    
+
     // Dependencies
     dependsOn?: string[];   // IDs of schedules that must complete first
 }
@@ -108,7 +108,7 @@ export const getScheduleTypeLabel = (type: ScheduleType): string => {
 
 export const getScheduleTypeColor = (type: ScheduleType): string => {
     const colors: Record<ScheduleType, string> = {
-        inbound: '#3b82f6',      // Blue
+        inbound: '#F2CC0D',      // Yellow
         outbound: '#22c55e',     // Green
         processing: '#f59e0b',   // Amber
         storage: '#8b5cf6',      // Purple
@@ -122,7 +122,7 @@ export const getScheduleTypeColor = (type: ScheduleType): string => {
 export const getStatusColor = (status: ScheduleStatus): string => {
     const colors: Record<ScheduleStatus, string> = {
         scheduled: '#6b7280',    // Gray
-        active: '#3b82f6',       // Blue
+        active: '#F2CC0D',       // Yellow
         completed: '#22c55e',    // Green
         skipped: '#f59e0b',      // Amber
         failed: '#ef4444',       // Red

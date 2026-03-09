@@ -10,6 +10,12 @@ export default {
                 sm: 'calc(var(--radius) - 4px)'
             },
             colors: {
+                brand: {
+                    yellow: '#F2CC0D',
+                    black: '#000000',
+                    'light-yellow': '#FFFBEB',
+                    'light-pink': '#FFF1F2',
+                },
                 background: 'hsl(var(--background))',
                 foreground: 'hsl(var(--foreground))',
                 card: {
@@ -50,6 +56,9 @@ export default {
                     '4': 'hsl(var(--chart-4))',
                     '5': 'hsl(var(--chart-5))'
                 }
+            },
+            backgroundImage: {
+                'warm-gradient': 'linear-gradient(135deg, #FFFBEB 0%, #FFFFFF 50%, #FFF1F2 100%)',
             }
         }
     },

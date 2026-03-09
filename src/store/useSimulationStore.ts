@@ -11,23 +11,23 @@ interface SimulationState {
     logs: LogEntry[];
     selectedAmrId: string | null;
     showHeatmap: boolean;
-    
+
     // Workflow state
     workflowTasks: WorkflowTask[];
     cargos: Cargo[];
     autoAssignTasks: boolean;
-    
+
     // Phase 2: Performance metrics
     metrics: PerformanceMetrics;
-    
+
     // Phase 2: Collision avoidance
     collisionAvoidanceEnabled: boolean;
-    
+
     // Phase 3: Demo mode
     demoScenarios: DemoScenario[];
     activeDemoScenario: string | null;
     demoMode: boolean;
-    
+
     // Actions
     toggleSimulation: () => void;
     setSpeed: (speed: number) => void;
@@ -42,7 +42,7 @@ interface SimulationState {
     shiftWaypoint: (id: string) => void;
     emergencyStop: () => void;
     setAMRSpawnNode: (id: string, nodeId: string) => void;
-    
+
     // Workflow actions
     createInboundTask: () => string | null;
     assignTaskToAMR: (amrId: string, taskId: string) => void;
@@ -52,15 +52,15 @@ interface SimulationState {
     sendAMRToDock: (id: string) => void;
     sendAMRToCharging: (id: string) => void;
     getAMRCurrentTask: (amrId: string) => WorkflowTask | undefined;
-    
+
     // Phase 2: Performance actions
     updateMetrics: () => void;
     getMetrics: () => PerformanceMetrics;
-    
+
     // Phase 2: Collision avoidance
     checkCollision: (amrId: string, newPosition: Position) => boolean;
     toggleCollisionAvoidance: () => void;
-    
+
     // Phase 3: Demo scenarios
     loadDemoScenario: (scenarioId: string) => void;
     startDemoMode: () => void;
@@ -80,12 +80,12 @@ const INITIAL_POSITIONS = [
 // Generate an inbound storage task
 function generateInboundTask(startNodeId?: string): WorkflowTask {
     const dockZone = ZONES['DOCK_LEFT'];
-    
+
     // Use smart node selection based on AMR's current position
     const processingNode = startNodeId ? findBestProcessingNode(startNodeId) : 'M3';
     const storageNode = startNodeId ? findBestStorageNode(processingNode) : 'B3';
     const dockNode = startNodeId || getFirstAvailableNode(dockZone) || 'L1';
-    
+
     const steps: TaskStep[] = [
         {
             id: crypto.randomUUID(),
@@ -123,7 +123,7 @@ function generateInboundTask(startNodeId?: string): WorkflowTask {
             duration: 0
         }
     ];
-    
+
     return {
         id: crypto.randomUUID(),
         type: 'inbound',
@@ -145,7 +145,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     workflowTasks: [],
     cargos: [],
     autoAssignTasks: true,
-    
+
     // Phase 2: Performance metrics
     metrics: {
         totalTasksCompleted: 0,
@@ -157,10 +157,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         systemEfficiency: 0,
         startTime: new Date().toISOString()
     },
-    
+
     // Phase 2: Collision avoidance
     collisionAvoidanceEnabled: true,
-    
+
     // Phase 3: Demo scenarios
     demoScenarios: [
         {
@@ -196,15 +196,15 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
     toggleSimulation: () => set((state) => {
         const newIsRunning = !state.isRunning;
-        
+
         // Create new state object
         const newState: Partial<SimulationState> = {
             isRunning: newIsRunning
         };
-        
+
         // Track which AMRs need tasks for execution
         const amrsNeedingTasks: string[] = [];
-        
+
         // If starting and auto-assign is enabled, assign tasks
         if (newIsRunning && state.autoAssignTasks) {
             const newTasks: WorkflowTask[] = [];
@@ -219,7 +219,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
                     task.startedAt = new Date().toISOString();
                     newTasks.push(task);
                     amrsNeedingTasks.push(amr.id);
-                    
+
                     // Assign task to AMR
                     return {
                         ...amr,
@@ -228,10 +228,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
                 }
                 return amr;
             });
-            
+
             newState.amrs = updatedAmrs;
             newState.workflowTasks = [...state.workflowTasks, ...newTasks];
-            
+
             // Execute first step for each AMR after state update
             setTimeout(() => {
                 amrsNeedingTasks.forEach((amrId) => {
@@ -239,7 +239,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
                 });
             }, 100);
         }
-        
+
         return newState;
     }),
 
@@ -281,7 +281,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
                 path: []
             };
         });
-        
+
         // Auto-assign tasks if running
         if (isRunning) {
             const newTasks: WorkflowTask[] = [];
@@ -294,10 +294,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
                 newTasks.push(task);
                 amr.currentTask = task.id;
             });
-            
+
             set({ amrs: newAMRs, workflowTasks: newTasks });
             get().addLog(`Initialized ${count} AMRs with active workflow tasks`, 'info');
-            
+
             // Execute first steps after state update
             setTimeout(() => {
                 newAMRs.forEach(amr => {
@@ -311,7 +311,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     },
 
     selectAMR: (id) => set({ selectedAmrId: id }),
-    
+
     toggleHeatmap: () => set((state) => ({ showHeatmap: !state.showHeatmap })),
 
     toggleAMRHealth: (id) => set((state) => {
@@ -341,15 +341,15 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     shiftWaypoint: (id: string) => set((state) => {
         const amr = state.amrs.find(a => a.id === id);
         if (!amr) return {};
-        
+
         const newPath = amr.path.slice(1);
-        
+
         // Check if current task has more steps
         if (newPath.length === 0 && amr.currentTask) {
             // Current move step completed
             get().completeCurrentStep(id);
         }
-        
+
         return {
             amrs: state.amrs.map((a) =>
                 a.id === id ? { ...a, path: newPath, status: newPath.length > 0 ? 'moving' : a.status } : a
@@ -426,7 +426,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
                 )
             }));
             get().addLog(`${amrId} completed task ${task.id}`, 'info');
-            
+
             // Auto-assign new task if enabled
             if (state.autoAssignTasks && state.isRunning) {
                 setTimeout(() => {
@@ -454,7 +454,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         } else if (currentStep.action === 'load') {
             get().updateAMRStatus(amrId, 'loading');
             get().addLog(`${amrId} loading cargo...`, 'info');
-            
+
             // Simulate loading time
             setTimeout(() => {
                 const loadingAmr = get().amrs.find(a => a.id === amrId);
@@ -474,7 +474,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         } else if (currentStep.action === 'unload') {
             get().updateAMRStatus(amrId, 'unloading');
             get().addLog(`${amrId} unloading cargo...`, 'info');
-            
+
             // Simulate unloading time
             setTimeout(() => {
                 const unloadingAmr = get().amrs.find(a => a.id === amrId);
@@ -500,7 +500,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         if (!task) return;
 
         const nextIndex = task.currentStepIndex + 1;
-        
+
         set((s) => ({
             workflowTasks: s.workflowTasks.map(t =>
                 t.id === task.id ? { ...t, currentStepIndex: nextIndex } : t
@@ -565,33 +565,33 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     updateMetrics: () => {
         const state = get();
         const completedTasks = state.workflowTasks.filter(t => t.status === 'completed');
-        
+
         // Calculate average task completion time
         const completionTimes = completedTasks
             .filter(t => t.startedAt && t.completedAt)
             .map(t => new Date(t.completedAt!).getTime() - new Date(t.startedAt!).getTime());
-        
-        const avgTime = completionTimes.length > 0 
-            ? completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length 
+
+        const avgTime = completionTimes.length > 0
+            ? completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length
             : 0;
-        
+
         // Calculate AMR utilization
         const amrUtilization: Record<string, number> = {};
         state.amrs.forEach(amr => {
             const tasksForAmr = state.workflowTasks.filter(t => t.assignedTo === amr.id && t.status === 'completed');
             amrUtilization[amr.id] = tasksForAmr.length;
         });
-        
+
         // Calculate throughput (tasks per hour)
         const startTime = new Date(state.metrics.startTime).getTime();
         const currentTime = new Date().getTime();
         const hoursElapsed = (currentTime - startTime) / (1000 * 60 * 60);
         const throughput = hoursElapsed > 0 ? completedTasks.length / hoursElapsed : 0;
-        
+
         // Calculate system efficiency
         const totalTasks = state.workflowTasks.length;
         const efficiency = totalTasks > 0 ? (completedTasks.length / totalTasks) * 100 : 0;
-        
+
         set((s) => ({
             metrics: {
                 ...s.metrics,
@@ -614,31 +614,31 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     checkCollision: (amrId: string, newPosition: Position) => {
         const state = get();
         if (!state.collisionAvoidanceEnabled) return false;
-        
+
         const currentAmr = state.amrs.find(a => a.id === amrId);
         if (!currentAmr) return false;
-        
+
         const SAFETY_DISTANCE = 30; // pixels
-        
+
         // Check distance to all other AMRs
         for (const otherAmr of state.amrs) {
             if (otherAmr.id === amrId) continue;
             if (otherAmr.status === 'error') continue;
-            
+
             const dx = newPosition.x - otherAmr.position.x;
             const dy = newPosition.y - otherAmr.position.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            
+
             if (distance < SAFETY_DISTANCE) {
                 return true; // Collision detected
             }
         }
-        
+
         return false; // No collision
     },
 
-    toggleCollisionAvoidance: () => set((state) => ({ 
-        collisionAvoidanceEnabled: !state.collisionAvoidanceEnabled 
+    toggleCollisionAvoidance: () => set((state) => ({
+        collisionAvoidanceEnabled: !state.collisionAvoidanceEnabled
     })),
 
     // Phase 3: Demo scenarios
@@ -648,22 +648,22 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
         // Stop current simulation
         set({ isRunning: false });
-        
+
         // Clear existing tasks
         get().clearAllTasks();
-        
+
         // Initialize AMRs for scenario
         get().initializeAMRs(scenario.amrCount);
-        
+
         // Set speed
         set({ speed: scenario.speed });
-        
+
         // Set active scenario
-        set({ 
+        set({
             activeDemoScenario: scenarioId,
-            demoMode: true 
+            demoMode: true
         });
-        
+
         get().addLog(`Demo scenario loaded: ${scenario.name}`, 'info');
     },
 
@@ -673,9 +673,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     },
 
     stopDemoMode: () => {
-        set({ 
+        set({
             demoMode: false,
-            activeDemoScenario: null 
+            activeDemoScenario: null
         });
         get().addLog('Demo mode stopped', 'info');
     },
@@ -683,7 +683,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     exportReport: () => {
         const state = get();
         const metrics = state.metrics;
-        
+
         const report = {
             timestamp: new Date().toISOString(),
             summary: {
@@ -703,7 +703,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
             })),
             logs: state.logs.slice(0, 50) // Last 50 logs
         };
-        
+
         return JSON.stringify(report, null, 2);
     },
 

@@ -20,7 +20,7 @@ export interface CargoItem {
   };
   quantity: number;
   status: CargoStatus;
-  
+
   // Location tracking
   currentLocation: {
     zone: RackZone;
@@ -28,17 +28,17 @@ export interface CargoItem {
     shelfId: string;
     position: string; // e.g., "A-12-3" (Zone-Row-Level)
   };
-  
+
   // Tracking info
   receivedAt?: string;
   storedAt?: string;
   pickedAt?: string;
   shippedAt?: string;
-  
+
   // Assignment
   assignedAMR?: string;
   assignedTask?: string;
-  
+
   // Metadata
   priority: 'low' | 'medium' | 'high' | 'urgent';
   customerOrder?: string;
@@ -84,7 +84,7 @@ export const getCargoStatusLabel = (status: CargoStatus): string => {
 
 export const getCargoStatusColor = (status: CargoStatus): string => {
   const colors: Record<CargoStatus, string> = {
-    in_transit: '#3b82f6',    // Blue
+    in_transit: '#F2CC0D',    // Yellow
     stored: '#22c55e',        // Green
     picking: '#f59e0b',       // Amber
     loading: '#8b5cf6',       // Purple
@@ -124,12 +124,12 @@ export const getZoneLabel = (zone: RackZone): string => {
 
 export const getZoneColor = (zone: RackZone): string => {
   const colors: Record<RackZone, string> = {
-    STORAGE_A: '#3b82f6',
-    STORAGE_B: '#3b82f6',
-    STORAGE_C: '#3b82f6',
-    STORAGE_D: '#3b82f6',
-    STORAGE_E: '#3b82f6',
-    STORAGE_F: '#3b82f6',
+    STORAGE_A: '#F2CC0D',
+    STORAGE_B: '#F2CC0D',
+    STORAGE_C: '#F2CC0D',
+    STORAGE_D: '#F2CC0D',
+    STORAGE_E: '#F2CC0D',
+    STORAGE_F: '#F2CC0D',
     ZONE_A: '#22c55e',
     ZONE_B: '#22c55e',
     PROCESSING: '#f59e0b',
@@ -142,7 +142,7 @@ export const getZoneColor = (zone: RackZone): string => {
 export const getPriorityColor = (priority: string): string => {
   const colors: Record<string, string> = {
     low: '#94a3b8',
-    medium: '#3b82f6',
+    medium: '#F2CC0D',
     high: '#f59e0b',
     urgent: '#ef4444'
   };

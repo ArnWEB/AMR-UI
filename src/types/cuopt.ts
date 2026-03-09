@@ -108,3 +108,10 @@ export interface ManagedOrder {
   route?: number[];
   error?: string;
 }
+
+export interface WaypointGraphData {
+  nodes: { [nodeId: number]: WarehouseNode };
+  graph: { [nodeId: number]: { edges: number[]; weights: number[] } };
+  node_count: number;
+  edge_count: number;
+}

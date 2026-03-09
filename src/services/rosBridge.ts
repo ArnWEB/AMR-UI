@@ -6,6 +6,7 @@ import {
   FleetPosition,
   NodesResponse,
   WebSocketMessage,
+  WaypointGraphData,
 } from '@/types/cuopt';
 
 const API_BASE = 'http://localhost:8000';
@@ -187,6 +188,14 @@ export async function checkHealth(): Promise<{ status: string; ros_connected: bo
   const response = await fetch(`${API_BASE}/api/health`);
   if (!response.ok) {
     throw new Error(`Health check failed: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function fetchWaypointGraph(): Promise<WaypointGraphData> {
+  const response = await fetch(`${API_BASE}/api/waypoint-graph`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch waypoint graph: ${response.statusText}`);
   }
   return response.json();
 }

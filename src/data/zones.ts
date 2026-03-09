@@ -11,7 +11,7 @@ export const ZONES: Record<string, Zone> = {
         capabilities: ['move', 'load', 'wait'],
         capacity: 5,
         currentLoad: 0,
-        color: '#3b82f6' // blue
+        color: '#F2CC0D' // brand yellow
     },
     // Processing zone - central pickup area (use M3 as primary - directly reachable from dock)
     'PROCESSING_CENTER': {
@@ -83,7 +83,7 @@ export function getReachableNodesFrom(startNodeId: string, zone: Zone): string[]
 export function findBestProcessingNode(startNodeId: string): string {
     const processingZone = ZONES['PROCESSING_CENTER'];
     const reachableNodes = getReachableNodesFrom(startNodeId, processingZone);
-    
+
     // Return first reachable node, or fallback to M3 (most accessible)
     return reachableNodes[0] || 'M3';
 }
@@ -91,14 +91,14 @@ export function findBestProcessingNode(startNodeId: string): string {
 // Find the best storage node for a given current position
 export function findBestStorageNode(startNodeId: string): string {
     const storageZones = [ZONES['STORAGE_TOP'], ZONES['STORAGE_BOTTOM']];
-    
+
     for (const zone of storageZones) {
         const reachableNodes = getReachableNodesFrom(startNodeId, zone);
         if (reachableNodes.length > 0) {
             return reachableNodes[0];
         }
     }
-    
+
     // Fallback to B3
     return 'B3';
 }

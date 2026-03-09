@@ -37,16 +37,16 @@ export const CuOptPlanViewer: React.FC<CuOptPlanViewerProps> = ({ compact = fals
     // Fetch initial data
     fetchLatestPlan().then(p => {
       if (p && p.plan_id) setPlan(p);
-    }).catch(() => {});
+    }).catch(() => { });
 
     fetchFleetPositions().then(r => {
       setPositions(r.robots);
-    }).catch(() => {});
+    }).catch(() => { });
 
     const interval = setInterval(() => {
       fetchFleetPositions().then(r => {
         setPositions(r.robots);
-      }).catch(() => {});
+      }).catch(() => { });
     }, 2000);
 
     return () => {
@@ -85,7 +85,7 @@ export const CuOptPlanViewer: React.FC<CuOptPlanViewerProps> = ({ compact = fals
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 h-full overflow-y-auto">
       {/* Connection Status */}
       <div className="flex items-center gap-2 text-xs">
         <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -108,15 +108,15 @@ export const CuOptPlanViewer: React.FC<CuOptPlanViewerProps> = ({ compact = fals
           <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Optimized Routes
           </h3>
-          
+
           {Object.entries(plan.assignments).map(([robotId, data]) => {
             const robotPos = positions.find(p => p.robot_id === robotId);
-            
+
             return (
               <div key={robotId} className="border rounded-lg p-3 bg-card">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
-                    <Package size={14} className="text-blue-500" />
+                    <Package size={14} className="text-brand-yellow" />
                     <span className="font-semibold">{robotId}</span>
                   </div>
                   <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -124,7 +124,7 @@ export const CuOptPlanViewer: React.FC<CuOptPlanViewerProps> = ({ compact = fals
                     {data.estimated_time.toFixed(1)} min
                   </div>
                 </div>
-                
+
                 {/* Tasks */}
                 <div className="space-y-1 mb-2">
                   {data.tasks.map((taskIdx, i) => {
@@ -136,7 +136,7 @@ export const CuOptPlanViewer: React.FC<CuOptPlanViewerProps> = ({ compact = fals
                     );
                   })}
                 </div>
-                
+
                 {/* Route */}
                 {data.route && data.route.length > 0 && (
                   <div className="text-xs text-muted-foreground">
@@ -144,11 +144,11 @@ export const CuOptPlanViewer: React.FC<CuOptPlanViewerProps> = ({ compact = fals
                     {data.route.length > 5 && ' → ...'}
                   </div>
                 )}
-                
+
                 {/* Current Position */}
                 {robotPos && (
                   <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
-                    Position: ({robotPos.x.toFixed(1)}, {robotPos.y.toFixed(1)}) • 
+                    Position: ({robotPos.x.toFixed(1)}, {robotPos.y.toFixed(1)}) •
                     {robotPos.busy ? ' Busy' : ' Idle'}
                   </div>
                 )}

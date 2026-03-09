@@ -7,13 +7,13 @@ type RightTab = 'fleet' | 'cuopt';
 
 export const RightPanel: React.FC = () => {
     const [rightTab, setRightTab] = useState<RightTab>('cuopt');
-    
-    const { 
-        amrs, 
-        logs, 
+
+    const {
+        amrs,
+        logs,
         workflowTasks,
-        selectedAmrId, 
-        selectAMR, 
+        selectedAmrId,
+        selectAMR,
         toggleAMRHealth,
         getAMRCurrentTask,
         cargos,
@@ -31,7 +31,7 @@ export const RightPanel: React.FC = () => {
 
     const loadingCount = amrs.filter(a => a.status === 'loading').length;
     const unloadingCount = amrs.filter(a => a.status === 'unloading').length;
-    
+
     const pendingTasks = workflowTasks.filter(t => t.status === 'pending').length;
     const activeTasks = workflowTasks.filter(t => t.status === 'active').length;
     const completedTasks = workflowTasks.filter(t => t.status === 'completed').length;
@@ -42,8 +42,8 @@ export const RightPanel: React.FC = () => {
     const selectedTask = selectedAmrId ? getAMRCurrentTask(selectedAmrId) : undefined;
 
     const getStatusColor = (status: string) => {
-        switch(status) {
-            case 'moving': return 'bg-blue-100 text-blue-700';
+        switch (status) {
+            case 'moving': return 'bg-brand-light-yellow text-black';
             case 'loading': return 'bg-amber-100 text-amber-700';
             case 'unloading': return 'bg-purple-100 text-purple-700';
             case 'idle': return 'bg-green-100 text-green-700';
@@ -53,8 +53,8 @@ export const RightPanel: React.FC = () => {
     };
 
     const getStatusDot = (status: string) => {
-        switch(status) {
-            case 'moving': return 'bg-blue-500';
+        switch (status) {
+            case 'moving': return 'bg-brand-yellow';
             case 'loading': return 'bg-amber-500';
             case 'unloading': return 'bg-purple-500';
             case 'idle': return 'bg-green-500';
@@ -69,33 +69,34 @@ export const RightPanel: React.FC = () => {
             <div className="flex border rounded-md overflow-hidden">
                 <button
                     onClick={() => setRightTab('cuopt')}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                        rightTab === 'cuopt' 
-                            ? 'bg-primary text-primary-foreground' 
+                    className={`flex-1 py-2 px-1 md:px-2 text-xs md:text-sm font-medium transition-colors flex items-center justify-center gap-1 md:gap-2 ${rightTab === 'cuopt'
+                            ? 'bg-primary text-primary-foreground'
                             : 'hover:bg-accent'
-                    }`}
+                        }`}
                 >
                     <Zap size={14} />
-                    CuOpt Plan
+                    <span className="hidden sm:inline">CuOpt Plan</span>
+                    <span className="sm:hidden">CuOpt</span>
                 </button>
                 <button
                     onClick={() => setRightTab('fleet')}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                        rightTab === 'fleet' 
-                            ? 'bg-primary text-primary-foreground' 
+                    className={`flex-1 py-2 px-1 md:px-2 text-xs md:text-sm font-medium transition-colors flex items-center justify-center gap-1 md:gap-2 ${rightTab === 'fleet'
+                            ? 'bg-primary text-primary-foreground'
                             : 'hover:bg-accent'
-                    }`}
+                        }`}
                 >
                     <Activity size={14} />
-                    Fleet Status
+                    <span className="hidden sm:inline">Fleet Status</span>
+                    <span className="sm:hidden">Fleet</span>
                 </button>
             </div>
 
             {/* Tab Content */}
-            {rightTab === 'cuopt' ? (
-                <CuOptPlanViewer />
-            ) : (
-                <div className="flex flex-col gap-6 flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                {rightTab === 'cuopt' ? (
+                    <CuOptPlanViewer />
+                ) : (
+                    <div className="flex flex-col gap-6 pb-4">
                     <div>
                         <h2 className="text-xl font-bold tracking-tight mb-1">Workflow Status</h2>
                         <p className="text-sm text-muted-foreground">Inbound → Storage Operations</p>
@@ -103,27 +104,26 @@ export const RightPanel: React.FC = () => {
 
                     {selectedAmr ? (
                         <div className="flex flex-col gap-4 flex-1">
-                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg relative">
+                            <div className="p-4 bg-brand-light-yellow border border-brand-yellow/30 rounded-lg relative">
                                 <button
                                     onClick={() => selectAMR(null)}
                                     className="absolute top-2 right-2 text-slate-400 hover:text-slate-600"
                                 >
                                     <X size={16} />
                                 </button>
-                                <div className="text-xs text-blue-600 font-medium uppercase mb-1">Selected Robot</div>
-                                <div className="text-3xl font-bold text-blue-900 mb-1">{selectedAmr.id}</div>
+                                <div className="text-xs text-brand-yellow font-medium uppercase mb-1">Selected Robot</div>
+                                <div className="text-3xl font-bold text-black mb-1">{selectedAmr.id}</div>
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-sm text-blue-700">
+                                    <div className="flex items-center gap-2 text-sm text-black">
                                         <div className={`w-2 h-2 rounded-full ${getStatusDot(selectedAmr.status)}`} />
                                         <span className="uppercase font-bold">{selectedAmr.status}</span>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => toggleAMRHealth(selectedAmr.id)}
-                                        className={`text-[10px] px-2 py-1 rounded border transition-colors ${
-                                            selectedAmr.status === 'error' 
-                                            ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200' 
-                                            : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
-                                        }`}
+                                        className={`text-[10px] px-2 py-1 rounded border transition-colors ${selectedAmr.status === 'error'
+                                                ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200'
+                                                : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
+                                            }`}
                                     >
                                         {selectedAmr.status === 'error' ? 'Resolve Fault' : 'Simulate Fault'}
                                     </button>
@@ -138,19 +138,17 @@ export const RightPanel: React.FC = () => {
                                         {selectedTask.steps.map((step, idx) => {
                                             const isCurrent = idx === selectedTask.currentStepIndex;
                                             const isCompleted = idx < selectedTask.currentStepIndex;
-                                            
+
                                             return (
-                                                <div 
-                                                    key={step.id} 
-                                                    className={`flex items-center gap-2 text-xs ${
-                                                        isCurrent ? 'text-amber-900 font-medium' :
-                                                        isCompleted ? 'text-green-700' : 'text-slate-400'
-                                                    }`}
+                                                <div
+                                                    key={step.id}
+                                                    className={`flex items-center gap-2 text-xs ${isCurrent ? 'text-amber-900 font-medium' :
+                                                            isCompleted ? 'text-green-700' : 'text-slate-400'
+                                                        }`}
                                                 >
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${
-                                                        isCurrent ? 'bg-amber-500 animate-pulse' :
-                                                        isCompleted ? 'bg-green-500' : 'bg-slate-300'
-                                                    }`} />
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-amber-500 animate-pulse' :
+                                                            isCompleted ? 'bg-green-500' : 'bg-slate-300'
+                                                        }`} />
                                                     <span>{step.description}</span>
                                                     {isCompleted && <span className="text-green-600">✓</span>}
                                                 </div>
@@ -179,10 +177,10 @@ export const RightPanel: React.FC = () => {
                     ) : (
                         <>
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-blue-500/10 border border-blue-200 rounded-lg">
-                                    <div className="text-xs text-blue-600 font-medium uppercase mb-1">Active Tasks</div>
-                                    <div className="text-2xl font-bold text-blue-700">{activeTasks}</div>
-                                    <div className="text-[10px] text-blue-500">{pendingTasks} pending</div>
+                                <div className="p-3 bg-brand-light-yellow border border-brand-yellow/30 rounded-lg">
+                                    <div className="text-xs text-brand-yellow font-medium uppercase mb-1">Active Tasks</div>
+                                    <div className="text-2xl font-bold text-black">{activeTasks}</div>
+                                    <div className="text-[10px] text-brand-yellow">{pendingTasks} pending</div>
                                 </div>
                                 <div className="p-3 bg-green-500/10 border border-green-200 rounded-lg">
                                     <div className="text-xs text-green-600 font-medium uppercase mb-1">Completed</div>
@@ -294,7 +292,8 @@ export const RightPanel: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

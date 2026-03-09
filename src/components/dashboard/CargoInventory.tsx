@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Search, 
-  Package, 
-  MapPin, 
+import {
+  Search,
+  Package,
+  MapPin,
   Box,
   AlertTriangle,
   Clock,
@@ -12,9 +12,9 @@ import {
   Warehouse
 } from 'lucide-react';
 import { CargoItem, RackZone, CargoStatus } from '@/types/cargo';
-import { 
-  getCargoStatusLabel, 
-  getCargoStatusColor, 
+import {
+  getCargoStatusLabel,
+  getCargoStatusColor,
   getCargoTypeLabel,
   getZoneLabel,
   formatLocation,
@@ -27,7 +27,7 @@ import { demoCargoItems, searchCargo, getCargoStats } from '@/data/cargoData';
 const StatusBadge: React.FC<{ status: CargoStatus }> = ({ status }) => {
   const color = getCargoStatusColor(status);
   return (
-    <span 
+    <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
       style={{ backgroundColor: `${color}20`, color }}
     >
@@ -41,7 +41,7 @@ const StatusBadge: React.FC<{ status: CargoStatus }> = ({ status }) => {
 const PriorityBadge: React.FC<{ priority: string }> = ({ priority }) => {
   const color = getPriorityColor(priority);
   return (
-    <span 
+    <span
       className="px-2 py-0.5 rounded text-xs font-medium capitalize"
       style={{ backgroundColor: `${color}20`, color }}
     >
@@ -56,16 +56,15 @@ const ZoneFilter: React.FC<{
   onSelect: (zone: RackZone | null) => void;
 }> = ({ selectedZone, onSelect }) => {
   const zones: RackZone[] = ['STORAGE_A', 'STORAGE_B', 'STORAGE_C', 'STORAGE_D', 'STORAGE_E', 'STORAGE_F'];
-  
+
   return (
     <div className="flex flex-wrap gap-2">
       <button
         onClick={() => onSelect(null)}
-        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-          selectedZone === null
+        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${selectedZone === null
             ? 'bg-slate-800 text-white'
             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-        }`}
+          }`}
       >
         All Zones
       </button>
@@ -73,11 +72,10 @@ const ZoneFilter: React.FC<{
         <button
           key={zone}
           onClick={() => onSelect(zone)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            selectedZone === zone
-              ? 'bg-blue-600 text-white'
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${selectedZone === zone
+              ? 'bg-black text-white'
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
+            }`}
         >
           {getZoneLabel(zone).replace('Storage ', '')}
         </button>
@@ -92,29 +90,29 @@ const CargoDetailModal: React.FC<{
   onClose: () => void;
 }> = ({ cargo, onClose }) => {
   if (!cargo) return null;
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Package className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 bg-brand-light-yellow rounded-lg flex items-center justify-center">
+              <Package className="w-5 h-5 text-brand-yellow" />
             </div>
             <div>
               <h3 className="font-bold text-slate-900">{cargo.id}</h3>
               <p className="text-xs text-slate-500">{cargo.sku}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
           >
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
-        
+
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
           {/* Product Info */}
@@ -122,7 +120,7 @@ const CargoDetailModal: React.FC<{
             <h4 className="font-semibold text-slate-900 mb-2">{cargo.name}</h4>
             <p className="text-sm text-slate-600">{cargo.description}</p>
           </div>
-          
+
           {/* Status & Priority */}
           <div className="flex gap-3 mb-6">
             <StatusBadge status={cargo.status} />
@@ -140,10 +138,10 @@ const CargoDetailModal: React.FC<{
               </span>
             )}
           </div>
-          
+
           {/* Location */}
-          <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
-            <div className="flex items-center gap-2 text-blue-800 font-medium mb-2">
+          <div className="bg-brand-light-yellow rounded-lg p-4 mb-6 border border-brand-yellow/30">
+            <div className="flex items-center gap-2 text-black font-medium mb-2">
               <MapPin className="w-4 h-4" />
               Current Location
             </div>
@@ -156,7 +154,7 @@ const CargoDetailModal: React.FC<{
               <span>Shelf: {cargo.currentLocation.shelfId}</span>
             </div>
           </div>
-          
+
           {/* Specifications */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="bg-slate-50 p-3 rounded-lg text-center">
@@ -172,13 +170,13 @@ const CargoDetailModal: React.FC<{
               <div className="text-xs text-slate-500">Type</div>
             </div>
           </div>
-          
+
           {/* Dimensions */}
           <div className="mb-6">
             <div className="text-xs text-slate-500 mb-1">Dimensions (L×W×H)</div>
             <div className="text-sm font-semibold text-slate-900">{formatDimensions(cargo.dimensions)}</div>
           </div>
-          
+
           {/* Timeline */}
           <div className="border-t border-slate-200 pt-4">
             <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
@@ -197,7 +195,7 @@ const CargoDetailModal: React.FC<{
               )}
               {cargo.storedAt && (
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-brand-yellow mt-0.5" />
                   <div>
                     <div className="text-sm font-medium text-slate-900">Stored</div>
                     <div className="text-xs text-slate-500">{new Date(cargo.storedAt).toLocaleString()}</div>
@@ -206,7 +204,7 @@ const CargoDetailModal: React.FC<{
               )}
             </div>
           </div>
-          
+
           {/* Assignment */}
           {(cargo.assignedAMR || cargo.assignedTask) && (
             <div className="border-t border-slate-200 pt-4 mt-4">
@@ -231,13 +229,13 @@ export const CargoInventory: React.FC = () => {
   const [selectedZone, setSelectedZone] = useState<RackZone | null>(null);
   const [selectedCargo, setSelectedCargo] = useState<CargoItem | null>(null);
   const [sortBy, setSortBy] = useState<'id' | 'zone' | 'status'>('id');
-  
+
   // Filter and search cargo
   const filteredCargo = useMemo(() => {
     let results = searchCargo(demoCargoItems, searchQuery, {
       zone: selectedZone || undefined,
     });
-    
+
     // Sort results
     results = [...results].sort((a, b) => {
       if (sortBy === 'id') return a.id.localeCompare(b.id);
@@ -245,13 +243,13 @@ export const CargoInventory: React.FC = () => {
       if (sortBy === 'status') return a.status.localeCompare(b.status);
       return 0;
     });
-    
+
     return results;
   }, [searchQuery, selectedZone, sortBy]);
-  
+
   // Get statistics
   const stats = useMemo(() => getCargoStats(demoCargoItems), []);
-  
+
   return (
     <div className="h-full bg-slate-50 flex flex-col">
       {/* Header */}
@@ -259,13 +257,13 @@ export const CargoInventory: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <Warehouse className="w-6 h-6 text-blue-600" />
+              <Warehouse className="w-6 h-6 text-brand-yellow" />
               Cargo Inventory
             </h2>
             <p className="text-sm text-slate-500">Search and track cargo across all storage racks</p>
           </div>
         </div>
-        
+
         {/* Stats Overview */}
         <div className="grid grid-cols-6 gap-3 mb-4">
           <div className="bg-white p-3 rounded-lg border border-slate-200">
@@ -276,9 +274,9 @@ export const CargoInventory: React.FC = () => {
             <div className="text-2xl font-bold text-green-700">{stats.stored}</div>
             <div className="text-xs text-green-600">In Storage</div>
           </div>
-          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-            <div className="text-2xl font-bold text-blue-700">{stats.inTransit}</div>
-            <div className="text-xs text-blue-600">In Transit</div>
+          <div className="bg-brand-light-yellow p-3 rounded-lg border border-brand-yellow/30">
+            <div className="text-2xl font-bold text-black">{stats.inTransit}</div>
+            <div className="text-xs text-brand-yellow">In Transit</div>
           </div>
           <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
             <div className="text-2xl font-bold text-amber-700">{stats.picking}</div>
@@ -293,7 +291,7 @@ export const CargoInventory: React.FC = () => {
             <div className="text-xs text-purple-600">Fragile</div>
           </div>
         </div>
-        
+
         {/* Search and Filter */}
         <div className="flex flex-col gap-3">
           <div className="flex gap-3">
@@ -304,29 +302,29 @@ export const CargoInventory: React.FC = () => {
                 placeholder="Search by cargo ID, SKU, name, or rack location..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
               />
             </div>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'id' | 'zone' | 'status')}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
             >
               <option value="id">Sort by ID</option>
               <option value="zone">Sort by Zone</option>
               <option value="status">Sort by Status</option>
             </select>
           </div>
-          
+
           <ZoneFilter selectedZone={selectedZone} onSelect={setSelectedZone} />
         </div>
-        
+
         {/* Results Count */}
         <div className="mt-3 text-sm text-slate-600">
           Showing {filteredCargo.length} of {demoCargoItems.length} cargo items
         </div>
       </div>
-      
+
       {/* Cargo List */}
       <div className="flex-1 overflow-y-auto p-4">
         {filteredCargo.length === 0 ? (
@@ -343,7 +341,7 @@ export const CargoInventory: React.FC = () => {
               <div
                 key={cargo.id}
                 onClick={() => setSelectedCargo(cargo)}
-                className="bg-white p-4 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"
+                className="bg-white p-4 rounded-lg border border-slate-200 hover:border-brand-yellow hover:shadow-sm transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
@@ -377,12 +375,12 @@ export const CargoInventory: React.FC = () => {
           </div>
         )}
       </div>
-      
+
       {/* Detail Modal */}
       {selectedCargo && (
-        <CargoDetailModal 
-          cargo={selectedCargo} 
-          onClose={() => setSelectedCargo(null)} 
+        <CargoDetailModal
+          cargo={selectedCargo}
+          onClose={() => setSelectedCargo(null)}
         />
       )}
     </div>
