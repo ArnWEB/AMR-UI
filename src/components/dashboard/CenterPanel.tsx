@@ -1,12 +1,15 @@
 import React, { useEffect } from 'react';
 import { CenterMap } from './CenterMap';
-import { LiveFeed } from './LiveFeed';
 import { MonitoringDashboard } from './MonitoringDashboard';
 import { ScheduleViewer } from './ScheduleViewer';
 import { CargoInventory } from './CargoInventory';
 import Warehouse3D from '../warehouse/Warehouse3D';
 import { useSimulationStore } from '@/store/useSimulationStore';
 import { Map, Box } from 'lucide-react';
+
+const LiveFeed = React.lazy(() =>
+    import('./LiveFeed').then((module) => ({ default: module.LiveFeed }))
+);
 
 type CenterTab = 'map' | 'video' | 'monitoring' | 'schedule' | 'inventory';
 
@@ -124,10 +127,19 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({ activeTab: externalAct
                 </div>
 
                 {/* Live Feed */}
-                <div className={`absolute inset-0 w-full h-full transition-opacity duration-300 ${activeTab === 'video' ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                    }`}>
-                    <LiveFeed />
-                </div>
+                {activeTab === 'video' && (
+                    <div className="absolute inset-0 w-full h-full opacity-100 z-10">
+                        <React.Suspense
+                            fallback={
+                                <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+                                    <div className="text-sm text-slate-500 dark:text-slate-400">Loading Live Feed...</div>
+                                </div>
+                            }
+                        >
+                            <LiveFeed />
+                        </React.Suspense>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -3,25 +3,14 @@ import { useSimulationStore } from '@/store/useSimulationStore';
 import {
     Grid, Maximize2, Minimize2,
     Video, Radio, Battery, Navigation,
-    Signal, RefreshCw, CameraOff
+    RefreshCw, CameraOff
 } from 'lucide-react';
-import {
-    connectROS,
-    disconnectROS,
-    subscribeToImage,
-    onConnectionChange,
-    getAvailableTopics,
-    onRosReady
-} from '@/services/rosImageBridge';
-import { AMRId, ROSImageData, ROSConnectionState } from '@/config/rosConfig';
+import { AMRId, CameraAngle, ROS_CONFIG } from '@/config/rosConfig';
 
 interface AMRCameraState {
     amrId: string;
-    isConnected: boolean;
     isReceiving: boolean;
-    latency: number;
     fps: number;
-    bitrate: number;
     lastFrameTime: number;
 }
 
@@ -31,65 +20,30 @@ const AMR_ID_MAP: Record<string, AMRId> = {
     'AMR-3': 'amr3',
 };
 
-const ROS_AMR_ID_MAP: Record<AMRId, string> = {
-    amr1: 'AMR-1',
-    amr2: 'AMR-2',
-    amr3: 'AMR-3',
+const CAMERA_ANGLES: CameraAngle[] = ['left', 'right'];
+const CAMERA_ANGLE_LABELS: Record<CameraAngle, string> = {
+    left: 'Left',
+    right: 'Right',
 };
 
 export const LiveFeed: React.FC = () => {
     const { amrs } = useSimulationStore();
     const [selectedAMR, setSelectedAMR] = useState<string>('AMR-1');
+    const [selectedAngle, setSelectedAngle] = useState<CameraAngle>('left');
     const [expandedAMR, setExpandedAMR] = useState<string | null>(null);
     const [showGrid, setShowGrid] = useState(false);
     const [useSimulated, setUseSimulated] = useState(false);
-    
-    const [rosConnection, setRosConnection] = useState<ROSConnectionState>({
-        isConnected: false,
-        isConnecting: false,
-        error: null,
-    });
+    const [streamErrors, setStreamErrors] = useState<Record<string, boolean>>({});
+    const [streamNonce, setStreamNonce] = useState(Date.now());
 
     const [cameraStates, setCameraStates] = useState<Record<string, AMRCameraState>>({});
-    const [rosImages, setRosImages] = useState<Record<string, string>>({});
     const fpsCountersRef = useRef<Record<string, { count: number; lastTime: number }>>({});
+    const streamBaseUrl = 'http://localhost:8080/stream';
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationFrameRef = useRef<number>(0);
     const timeRef = useRef<number>(0);
     const initializedAmrsRef = useRef<Set<string>>(new Set());
-    const unsubscribeRefs = useRef<Map<AMRId, () => void>>(new Map());
-
-    useEffect(() => {
-        const unsubscribe = onConnectionChange((state) => {
-            setRosConnection(state);
-            if (!state.isConnected && !useSimulated) {
-                setCameraStates(prev => {
-                    const updated = { ...prev };
-                    Object.keys(updated).forEach(key => {
-                        updated[key] = { ...updated[key], isReceiving: false };
-                    });
-                    return updated;
-                });
-            }
-        });
-
-        // When ROS connects, trigger a re-subscribe
-        const unsubscribeRosReady = onRosReady(() => {
-            // Force re-render by toggling a state
-            setRosConnection(prev => ({ ...prev }));
-        });
-
-        if (!useSimulated) {
-            connectROS().catch(console.error);
-        }
-
-        return () => {
-            unsubscribe();
-            unsubscribeRosReady();
-            disconnectROS();
-        };
-    }, [useSimulated]);
 
     useEffect(() => {
         amrs.forEach(amr => {
@@ -99,11 +53,8 @@ export const LiveFeed: React.FC = () => {
                     ...prev,
                     [amr.id]: {
                         amrId: amr.id,
-                        isConnected: false,
                         isReceiving: false,
-                        latency: 0,
                         fps: 0,
-                        bitrate: 0,
                         lastFrameTime: Date.now(),
                     }
                 }));
@@ -115,86 +66,90 @@ export const LiveFeed: React.FC = () => {
         });
     }, [amrs]);
 
-    useEffect(() => {
-        if (useSimulated || !rosConnection.isConnected) {
-            return;
-        }
-
-        const rosAmrId = AMR_ID_MAP[selectedAMR];
+    const getTopicName = useCallback((amrLabel: string, angle: CameraAngle): string | null => {
+        const rosAmrId = AMR_ID_MAP[amrLabel];
         if (!rosAmrId) {
-            return;
+            return null;
+        }
+        return ROS_CONFIG.topics[rosAmrId][angle];
+    }, []);
+
+    const getStreamUrl = useCallback((amrLabel: string, angle: CameraAngle): string => {
+        const topicName = getTopicName(amrLabel, angle);
+        if (!topicName) {
+            return '';
         }
 
-        const unsubscribe = subscribeToImage(rosAmrId, (data: ROSImageData) => {
-            const mimeType = data.mimeType || 'image/png';
-            setRosImages(prev => ({
-                ...prev,
-                [ROS_AMR_ID_MAP[rosAmrId]]: `data:${mimeType};base64,${data.imageBase64}`
+        // Verified server contract: /stream?topic=<full_topic_path>
+        return `${streamBaseUrl}?topic=${topicName}`;
+    }, [getTopicName]);
+
+    const markStreamFrame = useCallback((amrLabel: string) => {
+        const counter = fpsCountersRef.current[amrLabel] || { count: 0, lastTime: Date.now() };
+        const now = Date.now();
+        const nextCount = counter.count + 1;
+        const elapsed = now - counter.lastTime;
+
+        if (elapsed >= 1000) {
+            setCameraStates(cameraPrev => ({
+                ...cameraPrev,
+                [amrLabel]: {
+                    ...cameraPrev[amrLabel],
+                    fps: Math.round((nextCount * 1000) / elapsed),
+                    isReceiving: true,
+                    lastFrameTime: now,
+                }
             }));
 
-            const counter = fpsCountersRef.current[ROS_AMR_ID_MAP[rosAmrId]] || { count: 0, lastTime: Date.now() };
-            const now = Date.now();
-            const elapsed = now - counter.lastTime;
-            
-            if (elapsed >= 1000) {
-                setCameraStates(cameraPrev => ({
-                    ...cameraPrev,
-                    [ROS_AMR_ID_MAP[rosAmrId]]: {
-                        ...cameraPrev[ROS_AMR_ID_MAP[rosAmrId]],
-                        fps: Math.round((counter.count * 1000) / elapsed),
-                        isReceiving: true,
-                        lastFrameTime: now,
-                    }
-                }));
-                fpsCountersRef.current = {
-                    ...fpsCountersRef.current,
-                    [ROS_AMR_ID_MAP[rosAmrId]]: { count: 0, lastTime: now }
-                };
-            } else {
-                fpsCountersRef.current = {
-                    ...fpsCountersRef.current,
-                    [ROS_AMR_ID_MAP[rosAmrId]]: { ...counter, count: counter.count + 1 }
-                };
-            }
-        });
+            fpsCountersRef.current = {
+                ...fpsCountersRef.current,
+                [amrLabel]: { count: 0, lastTime: now }
+            };
+            return;
+        }
 
-        unsubscribeRefs.current.set(rosAmrId, unsubscribe);
-
-        return () => {
-            const unsub = unsubscribeRefs.current.get(rosAmrId);
-            if (unsub) {
-                unsub();
-                unsubscribeRefs.current.delete(rosAmrId);
-            }
+        fpsCountersRef.current = {
+            ...fpsCountersRef.current,
+            [amrLabel]: { count: nextCount, lastTime: counter.lastTime }
         };
-    }, [selectedAMR, rosConnection.isConnected, useSimulated]);
 
-    useEffect(() => {
-        if (useSimulated || !rosConnection.isConnected) return;
-
-        amrs.forEach(amr => {
-            const rosAmrId = AMR_ID_MAP[amr.id];
-            if (!rosAmrId || unsubscribeRefs.current.has(rosAmrId)) return;
-
-            const unsubscribe = subscribeToImage(rosAmrId, (data: ROSImageData) => {
-                setRosImages(prev => ({
-                    ...prev,
-                    [amr.id]: `data:image/png;base64,${data.imageBase64}`
-                }));
-            });
-
-            unsubscribeRefs.current.set(rosAmrId, unsubscribe);
-        });
-
-        return () => {
-            unsubscribeRefs.current.forEach((unsub) => unsub());
-            unsubscribeRefs.current.clear();
-        };
-    }, [amrs, rosConnection.isConnected, useSimulated]);
+        setCameraStates(cameraPrev => ({
+            ...cameraPrev,
+            [amrLabel]: {
+                ...cameraPrev[amrLabel],
+                isReceiving: true,
+                lastFrameTime: now,
+            }
+        }));
+    }, []);
 
     const selectedAmrData = amrs.find(a => a.id === selectedAMR);
     const selectedCameraState = cameraStates[selectedAMR];
-    const currentImage = rosImages[selectedAMR];
+    const selectedStreamKey = `${selectedAMR}:${selectedAngle}`;
+    const currentStreamUrl = getStreamUrl(selectedAMR, selectedAngle);
+    const streamUrlWithNonce = currentStreamUrl
+        ? `${currentStreamUrl}${currentStreamUrl.includes('?') ? '&' : '?'}_=${streamNonce}`
+        : '';
+    const hasStreamError = Boolean(streamErrors[selectedStreamKey]);
+
+    useEffect(() => {
+        setStreamErrors(prev => ({ ...prev, [selectedStreamKey]: false }));
+        setStreamNonce(Date.now());
+    }, [selectedAMR, selectedAngle, selectedStreamKey]);
+
+    useEffect(() => {
+        if (useSimulated || !hasStreamError) {
+            return;
+        }
+
+        // Back off retries so the page does not hammer the stream server.
+        const retryTimer = window.setTimeout(() => {
+            setStreamErrors(prev => ({ ...prev, [selectedStreamKey]: false }));
+            setStreamNonce(Date.now());
+        }, 3000);
+
+        return () => window.clearTimeout(retryTimer);
+    }, [useSimulated, hasStreamError, selectedStreamKey]);
 
     const renderSimulatedFeed = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number, amrId: string, status: string) => {
         timeRef.current += 0.016;
@@ -316,7 +271,7 @@ export const LiveFeed: React.FC = () => {
     }, [showGrid]);
 
     useEffect(() => {
-        if (currentImage || useSimulated) {
+        if (!hasStreamError || useSimulated) {
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current);
                 animationFrameRef.current = 0;
@@ -344,9 +299,9 @@ export const LiveFeed: React.FC = () => {
                 cancelAnimationFrame(animationFrameRef.current);
             }
         };
-    }, [currentImage, useSimulated, selectedAMR, amrs, renderSimulatedFeed]);
+    }, [hasStreamError, useSimulated, selectedAMR, amrs, renderSimulatedFeed]);
 
-    const isLive = rosConnection.isConnected && currentImage;
+    const isLive = !useSimulated && !hasStreamError;
 
     return (
         <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900">
@@ -360,7 +315,7 @@ export const LiveFeed: React.FC = () => {
                             <div>
                                 <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Camera Feed</h3>
                                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {useSimulated ? 'Simulated Mode' : rosConnection.isConnected ? 'ROS2 Connected' : 'Disconnected'}
+                                    {useSimulated ? 'Simulated Mode' : hasStreamError ? 'Stream Offline' : 'HTTP Stream Active'}
                                 </p>
                             </div>
                         </div>
@@ -378,15 +333,27 @@ export const LiveFeed: React.FC = () => {
                                 </option>
                             ))}
                         </select>
+
+                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg p-1">
+                            {CAMERA_ANGLES.map((angle) => (
+                                <button
+                                    key={angle}
+                                    onClick={() => setSelectedAngle(angle)}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                                        selectedAngle === angle
+                                            ? 'bg-brand-yellow text-black'
+                                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                    }`}
+                                >
+                                    {CAMERA_ANGLE_LABELS[angle]}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3">
                         {isLive && (
                             <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-                                <div className="flex items-center gap-1">
-                                    <Signal size={12} />
-                                    <span>{selectedCameraState?.latency || 0}ms</span>
-                                </div>
                                 <div className="flex items-center gap-1">
                                     <Radio size={12} />
                                     <span>{selectedCameraState?.fps || 0}fps</span>
@@ -394,7 +361,7 @@ export const LiveFeed: React.FC = () => {
                             </div>
                         )}
 
-                        {!rosConnection.isConnected && !useSimulated && (
+                        {hasStreamError && !useSimulated && (
                             <button
                                 onClick={() => setUseSimulated(true)}
                                 className="flex items-center gap-1 px-2 py-1 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded"
@@ -404,37 +371,23 @@ export const LiveFeed: React.FC = () => {
                             </button>
                         )}
 
-                        {(rosConnection.isConnected || useSimulated) && (
+                        {(isLive || useSimulated) && (
                             <button
                                 onClick={() => {
-                                    if (!rosConnection.isConnected) {
-                                        connectROS().catch(console.error);
-                                    }
                                     setUseSimulated(false);
+                                    setStreamNonce(Date.now());
+                                    setStreamErrors(prev => ({
+                                        ...prev,
+                                        [selectedStreamKey]: false
+                                    }));
                                 }}
-                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${rosConnection.isConnected 
+                                className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${isLive
                                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300'
                                 }`}
                             >
-                                <RefreshCw size={12} className={rosConnection.isConnecting ? 'animate-spin' : ''} />
-                                {rosConnection.isConnecting ? 'Connecting...' : 'ROS'}
-                            </button>
-                        )}
-
-                        {rosConnection.isConnected && (
-                            <button
-                                onClick={() => {
-                                    getAvailableTopics((topics) => {
-                                        console.log('Available ROS topics:', topics);
-                                        const cameraTopics = topics.filter((t: string) => t.includes('camera') || t.includes('image') || t.includes('AMR') || t.includes('amr'));
-                                        console.log('Camera-related topics:', cameraTopics);
-                                        alert('Topics with camera/image: ' + cameraTopics.join(', '));
-                                    });
-                                }}
-                                className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded"
-                            >
-                                Topics
+                                <RefreshCw size={12} />
+                                Retry Stream
                             </button>
                         )}
 
@@ -466,14 +419,34 @@ export const LiveFeed: React.FC = () => {
             </div>
 
             <div className={`flex-1 relative flex items-center justify-center overflow-hidden ${expandedAMR ? 'fixed inset-0 z-50 bg-slate-900' : 'h-[60vh]'}`}>
-                {currentImage && !useSimulated ? (
+                {!useSimulated && !hasStreamError ? (
                     <img
-                        src={currentImage}
-                        alt={`${selectedAMR} camera feed`}
+                        src={streamUrlWithNonce}
+                        alt={`${selectedAMR} ${selectedAngle} camera feed`}
                         className={`w-full object-contain bg-black`}
                         style={{ height: '100%' }}
+                        onLoad={() => {
+                            setStreamErrors(prev => ({
+                                ...prev,
+                                [selectedStreamKey]: false
+                            }));
+                            markStreamFrame(selectedAMR);
+                        }}
+                        onError={() => {
+                            setStreamErrors(prev => ({
+                                ...prev,
+                                [selectedStreamKey]: true
+                            }));
+                            setCameraStates(prev => ({
+                                ...prev,
+                                [selectedAMR]: {
+                                    ...prev[selectedAMR],
+                                    isReceiving: false,
+                                }
+                            }));
+                        }}
                     />
-                ) : (
+                ) : useSimulated ? (
                     <canvas
                         ref={canvasRef}
                         width={expandedAMR ? window.innerWidth : 800}
@@ -481,6 +454,17 @@ export const LiveFeed: React.FC = () => {
                         className={`w-full object-contain bg-black`}
                         style={{ height: '100%' }}
                     />
+                ) : (
+                    <div className="w-full h-full bg-black flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-3 text-slate-200">
+                            <div className="text-sm font-medium">
+                                Reconnecting stream...
+                            </div>
+                            <div className="text-xs text-slate-400">
+                                {currentStreamUrl || `${selectedAMR} ${CAMERA_ANGLE_LABELS[selectedAngle]} stream`}
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {selectedAmrData && (
@@ -534,15 +518,14 @@ export const LiveFeed: React.FC = () => {
 
             <div className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-4">
                 <div className="flex items-center gap-3">
-                    {amrs.map(amr => {
-                        const state = cameraStates[amr.id];
-                        const thumbnailImage = rosImages[amr.id];
-                        const isSelected = selectedAMR === amr.id;
+                    {CAMERA_ANGLES.map((angle) => {
+                        const state = cameraStates[selectedAMR];
+                        const isSelected = selectedAngle === angle;
 
                         return (
                             <button
-                                key={amr.id}
-                                onClick={() => setSelectedAMR(amr.id)}
+                                key={`${selectedAMR}:${angle}`}
+                                onClick={() => setSelectedAngle(angle)}
                                 className={`
                                     relative flex-shrink-0 rounded-lg overflow-hidden transition-all border-2
                                     ${isSelected
@@ -552,25 +535,17 @@ export const LiveFeed: React.FC = () => {
                                 `}
                                 style={{ width: '160px', height: '90px' }}
                             >
-                                {thumbnailImage && !useSimulated ? (
-                                    <img
-                                        src={thumbnailImage}
-                                        alt={`${amr.id} thumbnail`}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <canvas
-                                        id={`mini-${amr.id}`}
-                                        width={160}
-                                        height={90}
-                                        className="w-full h-full object-cover"
-                                    />
-                                )}
+                                <canvas
+                                    id={`mini-${selectedAMR}-${angle}`}
+                                    width={160}
+                                    height={90}
+                                    className="w-full h-full object-cover"
+                                />
 
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent" />
 
                                 <div className="absolute bottom-1 left-2 text-xs font-medium text-white">
-                                    {amr.id}
+                                    {CAMERA_ANGLE_LABELS[angle]}
                                 </div>
 
                                 <div className="absolute top-1 right-1">
@@ -578,13 +553,13 @@ export const LiveFeed: React.FC = () => {
                                             useSimulated 
                                                 ? 'bg-amber-500'
                                                 : state?.isReceiving
-                                                    ? amr.status === 'moving' ? 'bg-amber-500 animate-pulse' : 'bg-green-500'
+                                                    ? selectedAmrData?.status === 'moving' ? 'bg-amber-500 animate-pulse' : 'bg-green-500'
                                                     : 'bg-red-500'
                                         }`} />
                                 </div>
 
                                 <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-slate-900/60 rounded text-[8px] text-white capitalize">
-                                    {amr.status.slice(0, 3)}
+                                    {selectedAmrData?.status?.slice(0, 3) || 'unk'}
                                 </div>
 
                                 {isSelected && (
@@ -595,7 +570,7 @@ export const LiveFeed: React.FC = () => {
                     })}
 
                     <div className="flex-shrink-0 ml-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs text-slate-500 dark:text-slate-400">
-                        {amrs.length} AMRs
+                        {selectedAMR} • 2 Angles
                     </div>
                 </div>
             </div>
