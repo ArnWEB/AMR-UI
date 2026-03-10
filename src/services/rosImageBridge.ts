@@ -166,13 +166,19 @@ export function subscribeToImage(
         let imageData: string;
         
         if (message.encoding === 'rgb8' || message.encoding === 'bgr8') {
-          // Convert raw RGB to PNG using canvas
-          imageData = convertRgbToPng(message.data, message.width, message.height);
+          // Convert raw RGB/BGR to PNG using canvas
+          imageData = convertRgbToPng(
+            message.data,
+            message.width,
+            message.height,
+            message.encoding,
+            message.step
+          );
         } else if (message.encoding === 'jpeg' || message.encoding === 'jpegCompressed') {
           imageData = message.data;
         } else {
           // Try as raw bytes
-          imageData = uint8ArrayToBase64(message.data);
+          imageData = uint8ArrayToBase64(decodeRosImageData(message.data));
         }
         
         const data: ROSImageData = {
@@ -230,20 +236,43 @@ function uint8ArrayToBase64(uint8Array: Uint8Array | number[]): string {
   return btoa(binary);
 }
 
-function convertRgbToPng(data: Uint8Array | number[] | string, width: number, height: number): string {
+function decodeRosImageData(data: Uint8Array | number[] | string): number[] {
+  if (typeof data !== 'string') {
+    return Array.from(data);
+  }
+
+  // rosbridge often sends uint8[] as base64 string for efficiency.
   try {
-    let dataArray: number[];
-    if (typeof data === 'string') {
-      dataArray = [];
-      for (let i = 0; i < data.length; i++) {
-        dataArray.push(data.charCodeAt(i));
-      }
-    } else {
-      dataArray = Array.from(data);
+    const binary = atob(data);
+    const out = new Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      out[i] = binary.charCodeAt(i);
     }
+    return out;
+  } catch {
+    // Fallback for non-base64 string payloads.
+    const out = new Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      out[i] = data.charCodeAt(i);
+    }
+    return out;
+  }
+}
+
+function convertRgbToPng(
+  data: Uint8Array | number[] | string,
+  width: number,
+  height: number,
+  encoding: 'rgb8' | 'bgr8' = 'rgb8',
+  step?: number
+): string {
+  try {
+    const dataArray = decodeRosImageData(data);
+      const bytesPerPixel = 3;
+      const rowStep = typeof step === 'number' && step > 0 ? step : width * bytesPerPixel;
+
     
-    const expectedRgba = width * height * 4;
-    const isRgba = dataArray.length === expectedRgba;
+    const isBgr = encoding === 'bgr8';
     
     // Full resolution for best quality
     const outWidth = width;
@@ -262,25 +291,27 @@ function convertRgbToPng(data: Uint8Array | number[] | string, width: number, he
       for (let x = 0; x < outWidth; x++) {
         const dstIdx = (y * outWidth + x) * 4;
         
-        if (isRgba) {
-          // RGBA format - direct copy
-          const srcIdx = (y * width + x) * 4;
-          pixels[dstIdx] = dataArray[srcIdx] || 0;
-          pixels[dstIdx + 1] = dataArray[srcIdx + 1] || 0;
-          pixels[dstIdx + 2] = dataArray[srcIdx + 2] || 0;
-          pixels[dstIdx + 3] = dataArray[srcIdx + 3] || 255;
-        } else {
-          // RGB format (3 bytes per pixel)
-          const srcIdx = (y * width + x) * 3;
-          // Brightness boost for dark images
-          const r = Math.min(255, (dataArray[srcIdx] || 0) * 1.2);
-          const g = Math.min(255, (dataArray[srcIdx + 1] || 0) * 1.2);
-          const b = Math.min(255, (dataArray[srcIdx + 2] || 0) * 1.2);
-          pixels[dstIdx] = r;
-          pixels[dstIdx + 1] = g;
-          pixels[dstIdx + 2] = b;
-          pixels[dstIdx + 3] = 255;
-        }
+        const srcIdx = y * rowStep + x * bytesPerPixel;
+        const c0 = dataArray[srcIdx] || 0;
+        const c1 = dataArray[srcIdx + 1] || 0;
+        const c2 = dataArray[srcIdx + 2] || 0;
+
+        // Handle both rgb8 and bgr8 correctly.
+        const rawR = isBgr ? c2 : c0;
+        const rawG = c1;
+        const rawB = isBgr ? c0 : c2;
+
+        // Mild tone lift: gamma + brightness helps dark camera feeds.
+        const gamma = 0.85;
+        const gain = 1.12;
+        const r = Math.min(255, Math.pow(rawR / 255, gamma) * 255 * gain);
+        const g = Math.min(255, Math.pow(rawG / 255, gamma) * 255 * gain);
+        const b = Math.min(255, Math.pow(rawB / 255, gamma) * 255 * gain);
+
+        pixels[dstIdx] = r;
+        pixels[dstIdx + 1] = g;
+        pixels[dstIdx + 2] = b;
+        pixels[dstIdx + 3] = 255;
       }
     }
     
