@@ -19,20 +19,20 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ activeTab = 'map', onTabChange, onMenuToggle }) => {
     return (
         <header className="h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-2 md:px-4 lg:px-6 shadow-sm shrink-0">
-            {/* Left: Icon Placeholder & Logo + Menu Toggle */}
+            {/* Left: Logo & Menu Toggle */}
             <div className="flex items-center gap-2 md:gap-3">
-                <button 
+                <button
                     className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
                     onClick={onMenuToggle}
                 >
                     <Menu size={20} className="text-muted-foreground" />
                 </button>
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-primary rounded-lg flex items-center justify-center shrink-0">
-                    <span className="text-primary-foreground font-bold text-sm md:text-lg">A</span>
-                </div>
-                <div className="hidden sm:block">
-                    <h1 className="text-base md:text-lg font-semibold text-foreground whitespace-nowrap">AMR Dashboard</h1>
-                    <p className="text-xs text-muted-foreground hidden md:block">Warehouse Management</p>
+                <div className="flex items-center gap-2 shrink-0">
+                    <img 
+                        src="/ey-logo.png" 
+                        alt="Logo" 
+                        className="h-10 w-auto md:h-12 lg:h-14 object-contain"
+                    />
                 </div>
             </div>
 
@@ -47,8 +47,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab = 'map', onTabChange, 
                             onClick={() => onTabChange?.(tab.id as CenterTab)}
                             className={`
                                 flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap
-                                ${isActive 
-                                    ? 'bg-primary/10 text-primary ring-1 ring-primary/20' 
+                                ${isActive
+                                    ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
                                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                 }
                             `}
@@ -71,8 +71,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab = 'map', onTabChange, 
                             onClick={() => onTabChange?.(tab.id as CenterTab)}
                             className={`
                                 p-2 rounded-lg transition-all
-                                ${isActive 
-                                    ? 'bg-primary/10 text-primary' 
+                                ${isActive
+                                    ? 'bg-primary/10 text-primary'
                                     : 'text-muted-foreground hover:bg-muted'
                                 }
                             `}
@@ -95,8 +95,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab = 'map', onTabChange, 
                             onClick={() => onTabChange?.(tab.id as CenterTab)}
                             className={`
                                 p-1.5 rounded-lg transition-all
-                                ${isActive 
-                                    ? 'bg-primary/10 text-primary' 
+                                ${isActive
+                                    ? 'bg-primary/10 text-primary'
                                     : 'text-muted-foreground hover:bg-muted'
                                 }
                             `}
