@@ -1,16 +1,25 @@
 import { create } from 'zustand';
 import { AMR, LogEntry, Position } from '@/types';
 import { WorkflowTask, TaskStep, Cargo, PerformanceMetrics, DemoScenario } from '@/types/tasks';
+import { TransportOrder } from '@/types/cuopt';
 import { WAREHOUSE_GRAPH, findPath, findNearestNode } from '@/utils/pathfinding';
 import { ZONES, getFirstAvailableNode, findBestProcessingNode, findBestStorageNode } from '@/data/zones';
 
 interface SimulationState {
+    appMode: 'plan' | 'simulation';
     isRunning: boolean;
     speed: number;
     amrs: AMR[];
     logs: LogEntry[];
     selectedAmrId: string | null;
     showHeatmap: boolean;
+
+    // Orders state
+    pendingOrders: TransportOrder[];
+    selectedSampleId: string | null;
+    addSampleOrders: (orders: TransportOrder[], sampleId: string) => void;
+    clearPendingOrders: () => void;
+    removePendingOrder: (index: number) => void;
 
     // Workflow state
     workflowTasks: WorkflowTask[];
@@ -29,6 +38,7 @@ interface SimulationState {
     demoMode: boolean;
 
     // Actions
+    setAppMode: (mode: 'plan' | 'simulation') => void;
     toggleSimulation: () => void;
     setSpeed: (speed: number) => void;
     updateAMRPosition: (id: string, position: Position) => void;
@@ -136,12 +146,28 @@ function generateInboundTask(startNodeId?: string): WorkflowTask {
 }
 
 export const useSimulationStore = create<SimulationState>((set, get) => ({
+    appMode: 'plan',
     isRunning: false,
     speed: 1,
     amrs: [],
     logs: [],
     selectedAmrId: null,
     showHeatmap: false,
+    pendingOrders: [],
+    selectedSampleId: null,
+
+    addSampleOrders: (orders, sampleId) => set({ 
+        pendingOrders: orders, 
+        selectedSampleId: sampleId 
+    }),
+    clearPendingOrders: () => set({ 
+        pendingOrders: [], 
+        selectedSampleId: null 
+    }),
+    removePendingOrder: (index) => set((state) => ({
+        pendingOrders: state.pendingOrders.filter((_, i) => i !== index)
+    })),
+
     workflowTasks: [],
     cargos: [],
     autoAssignTasks: true,
@@ -193,6 +219,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     ],
     activeDemoScenario: null,
     demoMode: false,
+
+    setAppMode: (mode) => set({ appMode: mode }),
 
     toggleSimulation: () => set((state) => {
         const newIsRunning = !state.isRunning;

@@ -16,14 +16,12 @@ import {
   Loader2,
   XCircle,
   Plus,
-  Database,
-  ChevronDown,
   ArrowRight
 } from 'lucide-react';
 import { ManagedOrder, TransportOrder, OrderStatus, CuOptPlan } from '@/types/cuopt';
 import { PICKUP_OPTIONS, DELIVERY_OPTIONS, getNodeName } from '@/data/nodeMapping';
-import { SAMPLE_SCENARIOS, getScenarioNames } from '@/data/sampleOrders';
 import { submitOrders, isWebSocketConnected, subscribeToMessages, fetchLatestPlan } from '@/services/rosBridge';
+import { useSimulationStore } from '@/store/useSimulationStore';
 
 // Status colors matching schedule viewer
 const getStatusColor = (status: OrderStatus): string => {
@@ -328,12 +326,33 @@ const OrderStats: React.FC<{
 
 // Main ScheduleViewer component (now Order Management)
 export const ScheduleViewer: React.FC = () => {
+  const storePendingOrders = useSimulationStore(state => state.pendingOrders);
   const [pendingOrders, setPendingOrders] = useState<ManagedOrder[]>([]);
   const [sentOrders, setSentOrders] = useState<ManagedOrder[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [showSampleDropdown, setShowSampleDropdown] = useState(false);
   const [editingOrder, setEditingOrder] = useState<ManagedOrder | null>(null);
   const [latestPlan, setLatestPlan] = useState<CuOptPlan | null>(null);
+  const appMode = useSimulationStore(state => state.appMode);
+  const store = useSimulationStore();
+
+  // Sync with store pending orders - when store changes, update local
+  useEffect(() => {
+    if (storePendingOrders.length > 0) {
+      const newOrders: ManagedOrder[] = storePendingOrders.map((order, idx) => ({
+        id: `store-order-${idx}`,
+        order,
+        selected: false,
+        status: 'pending' as OrderStatus,
+      }));
+      setPendingOrders(newOrders);
+    }
+  }, [storePendingOrders]);
+
+  // Sync local changes back to store
+  const syncToStore = (orders: ManagedOrder[]) => {
+    const transportOrders = orders.map(o => o.order);
+    store.addSampleOrders(transportOrders, 'custom');
+  };
 
   useEffect(() => {
     const checkConnection = () => setIsConnected(isWebSocketConnected());
@@ -372,28 +391,24 @@ export const ScheduleViewer: React.FC = () => {
       selected: false,
       status: 'pending',
     };
-    setPendingOrders([...pendingOrders, newOrder]);
+    const updatedOrders = [...pendingOrders, newOrder];
+    setPendingOrders(updatedOrders);
+    syncToStore(updatedOrders);
   };
 
-  const loadSampleScenario = (scenarioId: string) => {
-    const scenario = SAMPLE_SCENARIOS.find(s => s.id === scenarioId);
-    if (scenario) {
-      const newOrders: ManagedOrder[] = scenario.orders.map(order => ({
-        id: generateId(),
-        order,
-        selected: false,
-        status: 'pending' as OrderStatus,
-      }));
-      setPendingOrders([...pendingOrders, ...newOrders]);
-    }
-    setShowSampleDropdown(false);
+  const removePendingOrder = (id: string) => {
+    const updatedOrders = pendingOrders.filter(o => o.id !== id);
+    setPendingOrders(updatedOrders);
+    syncToStore(updatedOrders);
   };
-
-  const removePendingOrder = (id: string) => setPendingOrders(pendingOrders.filter(o => o.id !== id));
   const toggleOrderSelection = (id: string) => setPendingOrders(pendingOrders.map(o => o.id === id ? { ...o, selected: !o.selected } : o));
   const selectAll = () => setPendingOrders(pendingOrders.map(o => ({ ...o, selected: true })));
   const clearSelection = () => setPendingOrders(pendingOrders.map(o => ({ ...o, selected: false })));
-  const updateOrder = (id: string, updatedOrder: TransportOrder) => setPendingOrders(pendingOrders.map(o => o.id === id ? { ...o, order: updatedOrder } : o));
+  const updateOrder = (id: string, updatedOrder: TransportOrder) => {
+    const updatedOrders = pendingOrders.map(o => o.id === id ? { ...o, order: updatedOrder } : o);
+    setPendingOrders(updatedOrders);
+    syncToStore(updatedOrders);
+  };
 
   const sendOrders = async (ordersToSend: ManagedOrder[]) => {
     if (ordersToSend.length === 0) return;
@@ -416,7 +431,6 @@ export const ScheduleViewer: React.FC = () => {
     }
   };
 
-  const pendingSelectedCount = pendingOrders.filter(o => o.selected).length;
   const completedCount = sentOrders.filter(o => o.status === 'completed').length;
   const sentCount = sentOrders.filter(o => o.status === 'sent').length;
 
@@ -446,34 +460,8 @@ export const ScheduleViewer: React.FC = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Sample & Add Buttons */}
+        {/* Add Order Button */}
         <div className="flex gap-2 mb-4">
-          <div className="relative flex-1">
-            <button
-              onClick={() => setShowSampleDropdown(!showSampleDropdown)}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm font-medium transition-colors"
-            >
-              <Database size={16} />
-              Load Sample
-              <ChevronDown size={14} />
-            </button>
-
-            {showSampleDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
-                {getScenarioNames().map((scenario) => (
-                  <button
-                    key={scenario.id}
-                    onClick={() => loadSampleScenario(scenario.id)}
-                    className="w-full text-left px-3 py-2 hover:bg-purple-50 text-sm border-b last:border-b-0"
-                  >
-                    <div className="font-medium">{scenario.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{scenario.description}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           <button
             onClick={addOrder}
             className="flex items-center gap-1 px-3 py-2 border border-slate-300 rounded-md hover:bg-slate-50 text-sm font-medium"
@@ -524,17 +512,17 @@ export const ScheduleViewer: React.FC = () => {
           </div>
         )}
 
-        {/* Send Buttons */}
-        {pendingOrders.length > 0 && (
+        {/* Send Buttons - Only in Simulation Mode */}
+        {appMode === 'simulation' && pendingOrders.length > 0 && (
           <div className="flex gap-2 pt-3 border-t">
             <button
               onClick={() => sendOrders(pendingOrders.filter(o => o.selected))}
-              disabled={pendingSelectedCount === 0}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${pendingSelectedCount === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-black hover:bg-black/80 text-white'
+              disabled={pendingOrders.filter(o => o.selected).length === 0}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${pendingOrders.filter(o => o.selected).length === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-black hover:bg-black/80 text-white'
                 }`}
             >
               <Send size={14} />
-              Send Selected ({pendingSelectedCount})
+              Send Selected ({pendingOrders.filter(o => o.selected).length})
             </button>
             <button
               onClick={() => sendOrders([...pendingOrders])}

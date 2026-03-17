@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useSimulationStore } from '@/store/useSimulationStore';
 import { CuOptPlanViewer } from './CuOptPlanViewer';
-import { Battery, Activity, AlertCircle, Clock, X, Package, TrendingUp, Shield, Zap } from 'lucide-react';
+import { Battery, Activity, AlertCircle, Clock, X, Package, TrendingUp, Shield, Zap, Send, Loader2 } from 'lucide-react';
+import { submitOrders } from '@/services/rosBridge';
 
 type RightTab = 'fleet' | 'cuopt';
 
 export const RightPanel: React.FC = () => {
     const [rightTab, setRightTab] = useState<RightTab>('cuopt');
+    const [isSending, setIsSending] = useState(false);
 
     const {
         amrs,
@@ -19,8 +21,23 @@ export const RightPanel: React.FC = () => {
         cargos,
         metrics,
         updateMetrics,
-        collisionAvoidanceEnabled
+        collisionAvoidanceEnabled,
+        pendingOrders,
+        clearPendingOrders
     } = useSimulationStore();
+
+    const handleSendToCuOpt = async () => {
+        if (pendingOrders.length === 0) return;
+        setIsSending(true);
+        try {
+            await submitOrders(pendingOrders);
+            clearPendingOrders();
+        } catch (err) {
+            console.error('Failed to send orders:', err);
+        } finally {
+            setIsSending(false);
+        }
+    };
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -90,6 +107,27 @@ export const RightPanel: React.FC = () => {
                     <span className="sm:hidden">Fleet</span>
                 </button>
             </div>
+
+            {/* Send to CuOpt Button */}
+            {pendingOrders.length > 0 && rightTab === 'cuopt' && (
+                <button
+                    onClick={handleSendToCuOpt}
+                    disabled={isSending}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-black hover:bg-black/80 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                >
+                    {isSending ? (
+                        <>
+                            <Loader2 size={18} className="animate-spin" />
+                            Sending...
+                        </>
+                    ) : (
+                        <>
+                            <Send size={18} />
+                            Send to CuOpt ({pendingOrders.length})
+                        </>
+                    )}
+                </button>
+            )}
 
             {/* Tab Content */}
             <div className="flex-1 min-h-0 overflow-y-auto">

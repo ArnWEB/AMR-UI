@@ -14,6 +14,13 @@ export const ROS_CONFIG = {
       right: '/amr3/front_stereo_camera/right/image_raw',
     },
   },
+  // Fixed warehouse camera views for simulation mode
+  warehouseCameras: [
+    { id: 'cam1', name: 'Entrance', topic: '/warehouse/camera1/image_raw' },
+    { id: 'cam2', name: 'Loading Bay', topic: '/warehouse/camera2/image_raw' },
+    { id: 'cam3', name: 'Storage Area', topic: '/warehouse/camera3/image_raw' },
+    { id: 'cam4', name: 'Processing', topic: '/warehouse/camera4/image_raw' },
+  ],
   reconnectInterval: 3000,
   connectionTimeout: 5000,
 };
