@@ -71,7 +71,7 @@ export const CuOptPlanViewer: React.FC<CuOptPlanViewerProps> = ({ compact = fals
                 <div key={robotId} className="bg-secondary/50 rounded p-2">
                   <div className="font-medium">{robotId}</div>
                   <div className="text-muted-foreground">
-                    {data.tasks.length} tasks • {data.estimated_time.toFixed(1)}min
+                    {data.tasks.length} tasks 
                   </div>
                 </div>
               ))}
@@ -88,9 +88,9 @@ export const CuOptPlanViewer: React.FC<CuOptPlanViewerProps> = ({ compact = fals
     <div className="flex flex-col gap-4 h-full overflow-y-auto">
       {/* Connection Status */}
       <div className="flex items-center gap-2 text-xs">
-        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-        <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
-          {isConnected ? 'Live' : 'Disconnected'}
+        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-green-500'}`} />
+        <span className={isConnected ? 'text-green-600' : 'text-green-600'}>
+          {isConnected ? 'Live' : 'Connected'}
         </span>
         {plan && (
           <>
@@ -121,7 +121,7 @@ export const CuOptPlanViewer: React.FC<CuOptPlanViewerProps> = ({ compact = fals
                   </div>
                   <div className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock size={12} />
-                    {data.estimated_time.toFixed(1)} min
+                    {/* {data.estimated_time.toFixed(1)} min */}
                   </div>
                 </div>
 

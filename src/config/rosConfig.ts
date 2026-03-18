@@ -16,10 +16,14 @@ export const ROS_CONFIG = {
   },
   // Fixed warehouse camera views for simulation mode
   warehouseCameras: [
-    { id: 'cam1', name: 'Entrance', topic: '/warehouse/camera1/image_raw' },
-    { id: 'cam2', name: 'Loading Bay', topic: '/warehouse/camera2/image_raw' },
-    { id: 'cam3', name: 'Storage Area', topic: '/warehouse/camera3/image_raw' },
-    { id: 'cam4', name: 'Processing', topic: '/warehouse/camera4/image_raw' },
+    { id: 'cam1', name: 'Tor Right', topic: '/top_right/rgb' },
+    {
+      id: 'cam2', name: 'docking top', topic: '/docking_top/rgb'
+    },
+    { id: 'cam4', name: 'AMR1 DEPTH', topic: '/amr1_tpv/rgb' },
+    { id: 'cam3', name: 'AMR1 RGB', topic: '/conveyor/rgb' },
+
+    // { id: 'cam5', name: 'AMR2 RGB', topic: '/conveyor/rgb' },
   ],
   reconnectInterval: 3000,
   connectionTimeout: 5000,

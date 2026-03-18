@@ -38,8 +38,8 @@ export const SAMPLE_SCENARIOS: SampleScenario[] = [
     description: 'Full workflow: station → processing → depot',
     orders: [
       {
-        pickup_location: 2,
-        delivery_location: 5,
+        pickup_location: 0,
+        delivery_location: 2,
         order_demand: 1,
         earliest_pickup: 0,
         latest_pickup: 10,
@@ -49,7 +49,18 @@ export const SAMPLE_SCENARIOS: SampleScenario[] = [
         delivery_service_time: 2,
       },
       {
-        pickup_location: 5,
+        pickup_location: 2,
+        delivery_location: 9,
+        order_demand: 1,
+        earliest_pickup: 15,
+        latest_pickup: 30,
+        pickup_service_time: 2,
+        earliest_delivery: 20,
+        latest_delivery: 60,
+        delivery_service_time: 2,
+      },
+      {
+        pickup_location: 9,
         delivery_location: 0,
         order_demand: 1,
         earliest_pickup: 15,

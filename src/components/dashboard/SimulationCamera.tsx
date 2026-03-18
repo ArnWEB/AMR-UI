@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Video, Radio, CameraOff, Maximize2, Minimize2 } from 'lucide-react';
 import { ROS_CONFIG } from '@/config/rosConfig';
 
@@ -9,88 +9,32 @@ interface CameraViewProps {
 }
 
 const CameraPane: React.FC<CameraViewProps> = ({ topic, name, onClick }) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isReceiving, setIsReceiving] = useState(false);
-    const [fps, setFps] = useState(0);
-    const streamBaseUrl = 'http://localhost:8080/stream';
-    const streamUrl = topic ? `${streamBaseUrl}?topic=${topic}` : '';
-
-    const fpsCounterRef = useRef<{ count: number; lastTime: number }>({ count: 0, lastTime: 0 });
-
-    useEffect(() => {
-        fpsCounterRef.current = { count: 0, lastTime: Date.now() };
-    }, [topic]);
-
-    useEffect(() => {
-        if (!streamUrl || !canvasRef.current) return;
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-
-        let animationId: number;
-        let lastTime = 0;
-        const targetFps = 30;
-        const frameInterval = 1000 / targetFps;
-
-        const draw = (timestamp: number) => {
-            if (!canvasRef.current) return;
-
-            if (timestamp - lastTime >= frameInterval) {
-                lastTime = timestamp;
-
-                if (img.complete && img.naturalWidth !== 0) {
-                    const ctx = canvasRef.current.getContext('2d');
-                    if (ctx) {
-                        ctx.drawImage(img, 0, 0, canvasRef.current.width, canvasRef.current.height);
-                        setIsReceiving(true);
-                        
-                        fpsCounterRef.current.count++;
-                        const now = Date.now();
-                        if (now - fpsCounterRef.current.lastTime >= 1000) {
-                            setFps(fpsCounterRef.current.count);
-                            fpsCounterRef.current.count = 0;
-                            fpsCounterRef.current.lastTime = now;
-                        }
-                    }
-                }
-            }
-            animationId = requestAnimationFrame(draw);
-        };
-
-        img.onload = () => {
-            setIsReceiving(true);
-            animationId = requestAnimationFrame(draw);
-        };
-
-        img.onerror = () => {
-            setIsReceiving(false);
-        };
-
-        img.src = streamUrl;
-
-        return () => {
-            cancelAnimationFrame(animationId);
-        };
-    }, [streamUrl]);
+    const streamUrl = topic ? `http://localhost:8080/stream?topic=${topic}` : '';
 
     return (
         <div 
             className="relative bg-slate-900 rounded-lg overflow-hidden cursor-pointer group"
             onClick={onClick}
         >
-            {isReceiving ? (
-                <canvas
-                    ref={canvasRef}
-                    width={640}
-                    height={360}
-                    className="w-full h-full object-contain"
-                />
-            ) : (
-                <div className="w-full h-full aspect-video flex flex-col items-center justify-center bg-slate-800">
-                    <CameraOff size={32} className="text-slate-500 mb-2" />
-                    <span className="text-xs text-slate-500">{name}</span>
-                </div>
-            )}
+            <div className="relative w-full aspect-video bg-slate-800">
+                {/* Native img tag — browser handles MJPEG streaming without CORS canvas issues */}
+                {streamUrl && (
+                    <img
+                        src={streamUrl}
+                        alt={name}
+                        className="w-full h-full object-contain"
+                        onLoad={() => setIsReceiving(true)}
+                        onError={() => setIsReceiving(false)}
+                    />
+                )}
+                {!isReceiving && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800">
+                        <CameraOff size={32} className="text-slate-500 mb-2" />
+                        <span className="text-xs text-slate-500">{name}</span>
+                    </div>
+                )}
+            </div>
 
             {/* Overlay */}
             <div className="absolute top-0 left-0 right-0 p-2 bg-gradient-to-b from-black/60 to-transparent">
@@ -98,7 +42,7 @@ const CameraPane: React.FC<CameraViewProps> = ({ topic, name, onClick }) => {
                     <span className="text-white text-xs font-medium">{name}</span>
                     <div className="flex items-center gap-1">
                         <div className={`w-2 h-2 rounded-full ${isReceiving ? 'bg-green-500' : 'bg-red-500'}`} />
-                        <span className="text-white/60 text-xs">{fps} FPS</span>
+                        <span className="text-white/60 text-xs">{isReceiving ? 'LIVE' : 'OFF'}</span>
                     </div>
                 </div>
             </div>
